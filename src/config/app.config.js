@@ -8,8 +8,8 @@
  */
 
 export const APP_CONFIG = {
-  name: 'MyApp',
-  tagline: 'Your app tagline here',
+  name: 'Recundle',
+  tagline: 'Track. Bundle. Recundle.',
   emoji: '🚀',
   icon: 'Box',
 
@@ -27,9 +27,9 @@ export const AUTH_PROFILES = null;
  * Fallback auth copy when AUTH_PROFILES is null or URL profile doesn't match.
  */
 export const GENERIC_AUTH = {
-  loginTitle: 'Welcome back',
-  signupTitle: 'Create account',
-  loginDescription: null,
-  signupDescription: null,
+  loginTitle: 'Welcome to Recundle',
+  signupTitle: 'Welcome to Recundle',
+  loginDescription: 'Track. Bundle. Recundle.',
+  signupDescription: 'Track. Bundle. Recundle.',
   redirectAfterAuth: '/dashboard',
 };

@@ -1,0 +1,71 @@
+/*
+ * Startup reveal. Every delay is offset by --splash-offset (negative, the time
+ * already elapsed) so the sequence continues seamlessly if the splash remounts
+ * when the first route redirects between layouts.
+ */
+.recundle-splash {
+  --splash-offset: 0ms;
+  animation: recundle-splash-exit 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: calc(1380ms + var(--splash-offset));
+}
+
+.recundle-splash__mark {
+  animation: recundle-splash-mark 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(0ms + var(--splash-offset));
+}
+
+.recundle-splash__wordmark {
+  animation: recundle-splash-wordmark 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(120ms + var(--splash-offset));
+}
+
+.recundle-splash__rule {
+  transform-origin: center;
+  animation: recundle-splash-rule 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(420ms + var(--splash-offset));
+}
+
+.recundle-splash__tagline {
+  animation: recundle-splash-tagline 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(620ms + var(--splash-offset));
+}
+
+@keyframes recundle-splash-mark {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes recundle-splash-wordmark {
+  from { opacity: 0; transform: translateY(6px); letter-spacing: 0.06em; }
+  to   { opacity: 1; transform: translateY(0); letter-spacing: -0.01em; }
+}
+
+@keyframes recundle-splash-rule {
+  from { opacity: 0; transform: scaleX(0); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes recundle-splash-tagline {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes recundle-splash-exit {
+  from { opacity: 1; }
+  to   { opacity: 0; visibility: hidden; }
+}
+
+@keyframes recundle-splash-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recundle-splash__mark,
+  .recundle-splash__wordmark,
+  .recundle-splash__rule,
+  .recundle-splash__tagline {
+    animation-name: recundle-splash-fade;
+    letter-spacing: -0.01em;
+  }
+}

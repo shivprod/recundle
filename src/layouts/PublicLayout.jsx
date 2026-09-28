@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import ThemeToggle from '@/components/ThemeToggle';
+import StartupSplash from '@/components/StartupSplash';
 
 export default function PublicLayout() {
   return (
@@ -8,6 +9,7 @@ export default function PublicLayout() {
         <ThemeToggle />
       </div>
       <Outlet />
+      <StartupSplash />
     </div>
   );
 }
