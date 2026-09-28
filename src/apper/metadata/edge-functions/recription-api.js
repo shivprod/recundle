@@ -303,7 +303,9 @@ async function auth(body) {
   const code = body.serverAuthCode;
   if (typeof code !== "string" || !code) throw new HttpError(400, "serverAuthCode is required");
   const secret = await apper.getSecret("GOOGLE_WEB_CLIENT_SECRET");
-  const t = await tokenCall({ code, client_id: CLIENT_ID, client_secret: secret, grant_type: "authorization_code", redirect_uri: "" });
+  // Android sends a serverAuthCode (no redirect URI); the web app uses Google's popup code flow ("postmessage").
+  const redirectUri = body.redirectUri === "postmessage" ? "postmessage" : "";
+  const t = await tokenCall({ code, client_id: CLIENT_ID, client_secret: secret, grant_type: "authorization_code", redirect_uri: redirectUri });
   const infoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(t.id_token)}`);
   const info = await infoRes.json();
   if (!infoRes.ok || info.aud !== CLIENT_ID) throw new HttpError(401, "Google sign-in could not be verified");

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { APP_CONFIG, GENERIC_AUTH } from '@/config/app.config';
@@ -12,15 +13,24 @@ import {
   normalizePreferredName,
   usePreferredName,
 } from '@/personalization';
+import { useGmail } from '@/gmail';
 
 export const route = { path: '/onboarding/name', layout: 'public', access: 'authenticated' };
 
 export default function NameSetup() {
   const navigate = useNavigate();
   const { hasPreferredName, isLoading, setPreferredName } = usePreferredName();
-  const [value, setValue] = useState('');
+  const user = useSelector((s) => s.user.user);
+  const { account } = useGmail();
+  const suggestion = normalizePreferredName(user?.firstName || account?.name?.split(' ')[0] || '');
+  const [value, setValue] = useState(suggestion);
+  const edited = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!edited.current && suggestion) setValue(suggestion);
+  }, [suggestion]);
 
   if (isLoading) {
     return (
@@ -63,7 +73,10 @@ export default function NameSetup() {
           <Input
             id="preferred-name"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              edited.current = true;
+              setValue(e.target.value);
+            }}
             placeholder="Your name"
             autoComplete="given-name"
             maxLength={MAX_PREFERRED_NAME_LENGTH}

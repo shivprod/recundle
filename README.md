@@ -24,6 +24,32 @@ This repo began as an export of the Apper project `recription-tech-crowd` (the p
   - `getPersonalizedGreeting()`, `getGreeting()`, `getTimeOfDayGreeting()`, `addressUser()`: greeting and copy helpers.
   - `getUserName()`: the name for non-React code.
 
+## Gmail receipts
+
+Onboarding is: Sign up / Sign in, then **Connect Gmail**, then the name step, then the dashboard. Sign-in with Google is Apper's social login, turned on in the Apper auth settings.
+
+- **Connect Gmail** (`src/gmail/`, `/onboarding/gmail`):
+  - Opens Google's consent popup for `gmail.readonly` using Google Identity Services (code flow, `ux_mode: popup`).
+  - The code goes to `recription-api` `auth` with `redirectUri: "postmessage"`.
+  - The returned sealed session is kept on the device, and the first receipt scan starts straight away, while the user is on the name step.
+- **Sync:**
+  - The first scan fetches the newest 60 emails, then backfills older pages in the background (up to 10 pages).
+  - Opening the dashboard runs an incremental sync (`since`) when the last sync is more than 10 minutes old.
+- **Subscriptions** (`src/gmail/subscriptions.js`):
+  - Receipts are grouped by merchant.
+  - A merchant counts as a subscription when its receipts show a billing period, a renewal date or a free trial, or when it charges the same amount at a regular interval.
+  - Lapsed plans and one-off orders are left out.
+  - Failed payments from the last 30 days are shown first.
+- **Disconnect** revokes the Google token and removes the receipts from the device.
+
+### Setup needed for production
+
+1. **Backend:** redeploy `recription-api` with the `redirectUri` change in `src/apper/metadata/edge-functions/recription-api.js`, and port that change to the TypeScript source (`server/apper/recription-api.ts`).
+2. **Google Cloud Console, OAuth web client:** add every web origin that serves the app (for example the Apper preview and production domains) under *Authorized JavaScript origins*.
+3. **Google Cloud Console, OAuth consent screen:** the app needs the `gmail.readonly` scope, which is a restricted scope.
+   - While the app is in testing, add test users (up to 100). Their access expires after 7 days.
+   - A public launch needs Google's verification and a security assessment, plus a privacy policy that meets Google's Limited Use requirements.
+
 ## Brand
 
 This follows the Recundle brand identity guidelines.
