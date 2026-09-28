@@ -83,12 +83,12 @@ export default function NameSetup() {
             autoFocus
             required
             aria-invalid={Boolean(error)}
-            className="h-9"
+            className="h-12"
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="pt-2">
-          <Button type="submit" disabled={saving} className="w-full h-9">
+          <Button type="submit" disabled={saving} className="w-full h-12 rounded-xl text-[16px] font-semibold">
             {saving ? 'Saving…' : 'Continue'}
           </Button>
         </div>

@@ -15,9 +15,9 @@ export default function AuthLayout({ children, title, description, icon }) {
             <RecundleMark size={64} title={APP_CONFIG.name} />
           )}
           <div className="text-center">
-            <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+            <h1 className="text-[28px] font-bold leading-tight tracking-tight text-balance">{title}</h1>
             {description && (
-              <p className="text-sm text-muted-foreground mt-1">{description}</p>
+              <p className="text-[15px] text-muted-foreground mt-1.5 text-balance">{description}</p>
             )}
           </div>
         </div>

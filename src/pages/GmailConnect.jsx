@@ -77,14 +77,14 @@ export default function GmailConnect() {
       <div className="w-full max-w-[26rem] flex flex-col items-center text-center">
         <SyncShowcase syncing={syncing} />
 
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-balance">
+        <h1 className="mt-6 text-[28px] font-bold leading-tight tracking-tight text-balance">
           {syncing
             ? 'Finding your subscriptions…'
             : name
               ? `${name}, let's find your subscriptions`
               : "Let's find your subscriptions"}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground text-balance">
+        <p className="mt-2 text-[15px] text-muted-foreground text-balance">
           {syncing
             ? 'This takes a few seconds. Keep this screen open.'
             : 'Sync Gmail and Recundle will read your receipts from services like these.'}
@@ -92,12 +92,12 @@ export default function GmailConnect() {
 
         <div className="mt-6 w-full" aria-live="polite">
           {syncing ? (
-            <div className="flex h-10 items-center justify-center gap-2 rounded-md bg-secondary text-sm font-medium text-secondary-foreground">
+            <div className="flex h-12 items-center justify-center gap-2 rounded-xl bg-secondary text-[15px] font-medium text-secondary-foreground">
               <ApperIcon name="Loader2" size={16} className="animate-spin" />
               {status}
             </div>
           ) : (
-            <Button onClick={handleSync} className="w-full h-10">
+            <Button onClick={handleSync} className="w-full h-12 rounded-xl text-[16px] font-semibold">
               <ApperIcon name="RefreshCw" size={16} />
               {firstSyncFailed ? 'Try again' : 'Sync with Gmail'}
             </Button>
@@ -116,7 +116,7 @@ export default function GmailConnect() {
           <button
             type="button"
             onClick={skip}
-            className="mt-5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="mt-5 text-[15px] font-medium text-primary underline-offset-4 hover:underline"
           >
             Skip for now
           </button>

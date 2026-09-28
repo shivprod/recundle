@@ -130,7 +130,7 @@ export default function AuthPage({ mode }) {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoFocus
-            className="h-9"
+            className="h-12"
           />
         </div>
         <div className="space-y-1">
@@ -149,7 +149,7 @@ export default function AuthPage({ mode }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-9 pr-10"
+              className="h-12 pr-10"
             />
             <button
               type="button"
@@ -171,7 +171,7 @@ export default function AuthPage({ mode }) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="h-9 pr-10"
+                className="h-12 pr-10"
               />
               <button
                 type="button"
@@ -186,7 +186,7 @@ export default function AuthPage({ mode }) {
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="pt-2">
-          <Button type="submit" disabled={loading} className="w-full h-9">
+          <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl text-[16px] font-semibold">
             {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
           </Button>
         </div>

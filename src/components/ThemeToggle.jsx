@@ -13,11 +13,12 @@ export default function ThemeToggle({ className }) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className={cn('flex items-center gap-0 rounded-lg border border-input p-0.5', className)}>
+    <div className={cn('flex items-center gap-0.5 rounded-[10px] bg-muted p-0.5', className)}>
       {OPTIONS.map(({ value, Icon, label }) => (
         <Toggle
           key={value}
           size="sm"
+          className="h-7 min-w-7 rounded-lg px-1.5 text-muted-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm hover:bg-transparent"
           pressed={theme === value}
           onPressedChange={() => setTheme(value)}
           aria-label={label}

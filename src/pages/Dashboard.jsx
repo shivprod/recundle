@@ -3,8 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import ApperIcon from '@/components/ApperIcon';
+import ServiceIcon from '@/components/ServiceIcon';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,40 +55,113 @@ function renewalText(sub) {
   return d <= 7 ? `${prefix} in ${d} days` : `${prefix} ${date}`;
 }
 
-const STATUS_PILL = {
-  trial: { label: 'Free trial', className: 'bg-warning/10 border-warning/20 text-warning' },
-  failed: { label: 'Payment failed', className: 'bg-destructive/10 border-destructive/20 text-destructive' },
-};
-
-function SubscriptionRow({ sub }) {
-  const pill = STATUS_PILL[sub.status];
-  const soon = sub.status === 'active' && sub.daysUntilRenewal != null && sub.daysUntilRenewal <= 3;
-  const details = [sub.plan, sub.paidWith].filter(Boolean).join(' · ');
-
+/** iOS-style inset grouped section: small caps header, rounded group, footnote. */
+function Section({ title, footer, children, className }) {
   return (
-    <li className="flex items-start gap-3 px-4 py-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-sm font-semibold text-secondary-foreground">
-        {sub.name.charAt(0).toUpperCase()}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">{sub.name}</p>
-          {pill && (
-            <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium', pill.className)}>
-              {pill.label}
-            </span>
-          )}
-        </div>
-        <p className={cn('text-xs text-muted-foreground', soon && 'font-medium text-primary')}>
-          {renewalText(sub)}
-        </p>
-        {details && <p className="truncate text-xs text-muted-foreground">{details}</p>}
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-semibold tabular-nums">{formatRupees(sub.amount)}</p>
-        {sub.period && <p className="text-xs text-muted-foreground">per {PERIOD_LABEL[sub.period]}</p>}
+    <section className={cn('mt-8', className)}>
+      {title && (
+        <h2 className="px-4 pb-2 text-[13px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+          {title}
+        </h2>
+      )}
+      <div className="overflow-hidden rounded-2xl bg-card">{children}</div>
+      {footer && <p className="px-4 pt-2 text-[13px] leading-snug text-muted-foreground">{footer}</p>}
+    </section>
+  );
+}
+
+/** A grouped-list row; the hairline sits under the text, inset past the icon. */
+function Row({ icon, children, trailing, first }) {
+  return (
+    <li className="flex items-center gap-3 pl-4">
+      {icon}
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-3 py-3 pr-4',
+          !first && 'border-t border-[var(--hairline)]',
+        )}
+      >
+        <div className="min-w-0 flex-1">{children}</div>
+        {trailing}
       </div>
     </li>
+  );
+}
+
+const STATUS_TAG = {
+  trial: { label: 'Free trial', className: 'bg-warning/15 text-warning' },
+  failed: { label: 'Payment failed', className: 'bg-destructive/15 text-destructive' },
+};
+
+function SubscriptionRows({ subs }) {
+  return (
+    <ul>
+      {subs.map((sub, i) => {
+        const tag = STATUS_TAG[sub.status];
+        const soon = sub.status === 'active' && sub.daysUntilRenewal != null && sub.daysUntilRenewal <= 3;
+        const details = [sub.plan, sub.paidWith].filter(Boolean).join(' · ');
+        return (
+          <Row
+            key={sub.id}
+            first={i === 0}
+            icon={<ServiceIcon name={sub.name} />}
+            trailing={
+              <div className="shrink-0 text-right">
+                <p className="text-[16px] font-semibold tabular-nums">{formatRupees(sub.amount)}</p>
+                {sub.period && (
+                  <p className="text-[13px] text-muted-foreground">per {PERIOD_LABEL[sub.period]}</p>
+                )}
+              </div>
+            }
+          >
+            <div className="flex items-center gap-2">
+              <p className="truncate text-[16px] font-medium">{sub.name}</p>
+              {tag && (
+                <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold', tag.className)}>
+                  {tag.label}
+                </span>
+              )}
+            </div>
+            <p
+              className={cn(
+                'text-[13px] leading-snug text-muted-foreground',
+                soon && 'font-medium text-primary',
+                sub.status === 'failed' && 'text-destructive',
+              )}
+            >
+              {renewalText(sub)}
+            </p>
+            {details && <p className="truncate text-[13px] text-muted-foreground">{details}</p>}
+          </Row>
+        );
+      })}
+    </ul>
+  );
+}
+
+function SummaryCard({ monthlyTotal, paidCount, trialCount, renewingCount, headline }) {
+  const stats = [
+    { label: 'Subscriptions', value: paidCount },
+    { label: 'This week', value: renewingCount },
+    { label: 'Free trials', value: trialCount },
+  ];
+  return (
+    <section className="mt-6 rounded-2xl bg-card p-5">
+      <p className="text-[13px] font-medium text-muted-foreground">You're spending</p>
+      <p className="mt-0.5 text-[40px] font-bold leading-none tracking-tight tabular-nums">
+        {formatRupees(monthlyTotal, { whole: true })}
+        <span className="ml-1 text-[17px] font-medium tracking-normal text-muted-foreground">/month</span>
+      </p>
+      <dl className="mt-5 grid grid-cols-3 gap-2">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-xl bg-muted px-3 py-2.5">
+            <dt className="text-[12px] text-muted-foreground">{s.label}</dt>
+            <dd className="text-[20px] font-semibold tabular-nums">{s.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {headline && <p className="mt-4 text-[15px] font-medium">{headline}</p>}
+    </section>
   );
 }
 
@@ -110,30 +183,30 @@ function ConnectGmailCard({ needsReconnect, onConnect }) {
   };
 
   return (
-    <Card className="mt-8">
-      <CardContent className="flex flex-col items-center py-10 text-center">
-        <div className="size-12 bg-secondary rounded-xl flex items-center justify-center mb-4">
-          <ApperIcon name="Mail" size={22} className="text-secondary-foreground" />
-        </div>
-        <h2 className="text-base font-semibold">
-          {needsReconnect ? 'Reconnect Gmail to keep your list up to date' : 'Find your subscriptions automatically'}
-        </h2>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          {needsReconnect
-            ? 'Google access for Recundle ended. Reconnect to continue reading your receipts.'
-            : 'Connect Gmail and Recundle will build your list from your receipts. Read-only, and you can disconnect any time.'}
-        </p>
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        <Button onClick={handleConnect} disabled={connecting} className="mt-5">
-          <ApperIcon name="Mail" size={16} />
-          {connecting ? 'Connecting…' : needsReconnect ? 'Reconnect Gmail' : 'Connect Gmail'}
-        </Button>
-      </CardContent>
-    </Card>
+    <section className="mt-8 flex flex-col items-center rounded-2xl bg-card px-6 py-8 text-center">
+      <div className="flex -space-x-2" aria-hidden="true">
+        {['Netflix', 'Prime Video', 'YouTube', 'Spotify', 'Claude'].map((n) => (
+          <ServiceIcon key={n} name={n} className="size-9 rounded-[10px] ring-2 ring-card" />
+        ))}
+      </div>
+      <h2 className="mt-5 text-[20px] font-semibold tracking-tight">
+        {needsReconnect ? 'Reconnect Gmail to keep your list up to date' : 'Find your subscriptions automatically'}
+      </h2>
+      <p className="mt-1.5 max-w-sm text-[15px] text-muted-foreground">
+        {needsReconnect
+          ? 'Google access for Recundle ended. Reconnect to continue reading your receipts.'
+          : 'Connect Gmail and Recundle will build your list from your receipts. Read-only, and you can disconnect any time.'}
+      </p>
+      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      <Button onClick={handleConnect} disabled={connecting} className="mt-6 h-12 w-full max-w-xs rounded-xl text-[16px] font-semibold">
+        <ApperIcon name="Mail" size={18} />
+        {connecting ? 'Connecting…' : needsReconnect ? 'Reconnect Gmail' : 'Connect Gmail'}
+      </Button>
+    </section>
   );
 }
 
-function SyncBar({ account, sync, onSync, onDisconnect }) {
+function GmailSection({ account, sync, onSync, onDisconnect }) {
   const syncing = sync.status === 'syncing';
   const status = syncing
     ? `Scanning receipts… ${plural(sync.scanned, 'email', 'emails')} checked`
@@ -142,36 +215,57 @@ function SyncBar({ account, sync, onSync, onDisconnect }) {
       : 'Not synced yet';
 
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-      <span className="flex min-w-0 items-center gap-1.5">
-        <ApperIcon name={syncing ? 'Loader2' : 'Mail'} size={14} className={cn('shrink-0', syncing && 'animate-spin')} />
-        <span className="truncate">{account?.email ?? 'Gmail'}</span>
-      </span>
-      <span aria-live="polite">{status}</span>
-      <div className="ml-auto flex items-center gap-1">
-        <Button variant="ghost" size="xs" onClick={onSync} disabled={syncing}>
-          <ApperIcon name="RefreshCw" size={12} />
-          Sync now
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="xs">Disconnect</Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Disconnect Gmail?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Recundle will stop reading your receipts, and the subscriptions it found will be removed from this device.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={onDisconnect}>Disconnect</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </div>
+    <Section title="Gmail" footer="Read-only. Recundle only looks at receipts and invoices.">
+      <ul>
+        <Row
+          first
+          icon={
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-[11px] bg-secondary text-secondary-foreground">
+              <ApperIcon name={syncing ? 'Loader2' : 'Mail'} size={20} className={cn(syncing && 'animate-spin')} />
+            </div>
+          }
+        >
+          <p className="truncate text-[16px] font-medium">{account?.email ?? 'Gmail'}</p>
+          <p className="text-[13px] text-muted-foreground" aria-live="polite">{status}</p>
+        </Row>
+        <li className="border-t border-[var(--hairline)]">
+          <button
+            type="button"
+            onClick={onSync}
+            disabled={syncing}
+            className="flex w-full items-center gap-2 px-4 py-3.5 text-left text-[16px] font-medium text-primary disabled:opacity-50"
+          >
+            <ApperIcon name="RefreshCw" size={17} />
+            Sync now
+          </button>
+        </li>
+        <li className="border-t border-[var(--hairline)]">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-4 py-3.5 text-left text-[16px] font-medium text-destructive"
+              >
+                <ApperIcon name="Unplug" size={17} />
+                Disconnect Gmail
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Disconnect Gmail?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Recundle will stop reading your receipts, and the subscriptions it found will be removed from this device.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onDisconnect}>Disconnect</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </li>
+      </ul>
+    </Section>
   );
 }
 
@@ -183,6 +277,10 @@ function Subscriptions({ preferredName, gmail }) {
   const scanning = sync.status === 'syncing' || (firstSync && sync.status === 'idle');
   const firstSyncFailed = firstSync && sync.status === 'error';
 
+  const attention = subscriptions.filter((s) => s.status === 'failed');
+  const thisWeek = subscriptions.filter((s) => s.status !== 'failed' && renewingThisWeek.includes(s));
+  const later = subscriptions.filter((s) => s.status !== 'failed' && !renewingThisWeek.includes(s));
+
   const handleSync = () => gmail.syncNow();
   const handleDisconnect = async () => {
     await gmail.disconnect();
@@ -191,12 +289,10 @@ function Subscriptions({ preferredName, gmail }) {
 
   return (
     <>
-      <SyncBar account={account} sync={sync} onSync={handleSync} onDisconnect={handleDisconnect} />
-
       {sync.status === 'error' && (
-        <p className="mt-3 text-sm text-destructive">
+        <p className="mt-4 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {sync.error}{' '}
-          <button type="button" onClick={handleSync} className="font-medium underline underline-offset-4">
+          <button type="button" onClick={handleSync} className="font-semibold underline underline-offset-4">
             Try again
           </button>
         </p>
@@ -204,80 +300,74 @@ function Subscriptions({ preferredName, gmail }) {
 
       {subscriptions.length > 0 ? (
         <>
-          <Card className="mt-4">
-            <CardContent className="flex flex-wrap items-end gap-x-8 gap-y-2">
-              <div>
-                <p className="text-xs text-muted-foreground">You're spending</p>
-                <p className="text-3xl font-bold tracking-tight tabular-nums">
-                  {formatRupees(monthlyTotal, { whole: true })}
-                  <span className="text-base font-medium text-muted-foreground">/month</span>
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                across {plural(paidCount, 'subscription', 'subscriptions')}
-                {trialCount > 0 && <> · {plural(trialCount, 'free trial', 'free trials')}</>}
-                {renewingThisWeek.length > 0 && <> · {renewingThisWeek.length} renewing this week</>}
-              </p>
-            </CardContent>
-          </Card>
+          <SummaryCard
+            monthlyTotal={monthlyTotal}
+            paidCount={paidCount}
+            trialCount={trialCount}
+            renewingCount={renewingThisWeek.length}
+            headline={
+              renewingThisWeek.length > 0
+                ? addressUser(
+                    preferredName,
+                    `${plural(renewingThisWeek.length, 'subscription renews', 'subscriptions renew')} this week.`,
+                  )
+                : null
+            }
+          />
 
-          <h2 className="mt-8 text-sm font-semibold">
-            {renewingThisWeek.length > 0
-              ? addressUser(
-                  preferredName,
-                  `${plural(renewingThisWeek.length, 'subscription renews', 'subscriptions renew')} this week.`,
-                )
-              : "Here's what's coming up."}
-          </h2>
-          <Card className="mt-3 py-0">
-            <ul className="divide-y divide-border">
-              {subscriptions.map((sub) => (
-                <SubscriptionRow key={sub.id} sub={sub} />
-              ))}
-            </ul>
-          </Card>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Found from your receipts. Dates marked "Likely" are estimated from your last payment.
-          </p>
+          {attention.length > 0 && (
+            <Section title="Needs attention">
+              <SubscriptionRows subs={attention} />
+            </Section>
+          )}
+          {thisWeek.length > 0 && (
+            <Section title="This week">
+              <SubscriptionRows subs={thisWeek} />
+            </Section>
+          )}
+          {later.length > 0 && (
+            <Section
+              title={thisWeek.length > 0 ? 'Coming up' : "Here's what's coming up"}
+              footer={'Found from your receipts. Dates marked "Likely" are estimated from your last payment.'}
+            >
+              <SubscriptionRows subs={later} />
+            </Section>
+          )}
         </>
       ) : (
-        <Card className="mt-4">
-          <CardContent className="flex flex-col items-center py-12 text-center">
-            <div className="size-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
-              <ApperIcon
-                name={scanning ? 'Loader2' : firstSyncFailed ? 'MailWarning' : 'Inbox'}
-                size={22}
-                className={cn('text-primary', scanning && 'animate-spin')}
-              />
-            </div>
-            {scanning ? (
-              <>
-                <h2 className="text-base font-semibold">Looking through your receipts…</h2>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Your subscriptions will appear here in a moment.
-                </p>
-              </>
-            ) : firstSyncFailed ? (
-              <>
-                <h2 className="text-base font-semibold">Couldn't read your receipts yet</h2>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Check the message above, then try again.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-base font-semibold">No subscriptions found yet</h2>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  {addressUser(
-                    preferredName,
-                    `we checked ${plural(sync.scanned, 'email', 'emails')} and didn't find a recurring payment. New receipts show up after each sync.`,
-                  )}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <section className="mt-6 flex flex-col items-center rounded-2xl bg-card px-6 py-12 text-center">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+            <ApperIcon
+              name={scanning ? 'Loader2' : firstSyncFailed ? 'MailWarning' : 'Inbox'}
+              size={22}
+              className={cn('text-primary', scanning && 'animate-spin')}
+            />
+          </div>
+          {scanning ? (
+            <>
+              <h2 className="text-[17px] font-semibold">Looking through your receipts…</h2>
+              <p className="mt-1 max-w-sm text-[15px] text-muted-foreground">Your subscriptions will appear here in a moment.</p>
+            </>
+          ) : firstSyncFailed ? (
+            <>
+              <h2 className="text-[17px] font-semibold">Couldn't read your receipts yet</h2>
+              <p className="mt-1 max-w-sm text-[15px] text-muted-foreground">Check the message above, then try again.</p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-[17px] font-semibold">No subscriptions found yet</h2>
+              <p className="mt-1 max-w-sm text-[15px] text-muted-foreground">
+                {addressUser(
+                  preferredName,
+                  `we checked ${plural(sync.scanned, 'email', 'emails')} and didn't find a recurring payment. New receipts show up after each sync.`,
+                )}
+              </p>
+            </>
+          )}
+        </section>
       )}
+
+      <GmailSection account={account} sync={sync} onSync={handleSync} onDisconnect={handleDisconnect} />
     </>
   );
 }
@@ -323,12 +413,12 @@ export default function Dashboard() {
   const name = preferredName || profileName;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pt-24 pb-12">
-      <p className="text-sm text-muted-foreground">{getTimeOfDayGreeting()}</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+    <main className="mx-auto w-full max-w-2xl px-4 pt-6 pb-16">
+      <p className="px-1 text-[15px] font-medium text-muted-foreground">{getTimeOfDayGreeting()}</p>
+      <h1 className="mt-1 px-1 text-[32px] font-bold leading-[1.1] tracking-tight text-balance">
         {getPersonalizedGreeting(name)}
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 px-1 text-[15px] text-muted-foreground">
         Your subscriptions. One place. Always on track.
       </p>
 

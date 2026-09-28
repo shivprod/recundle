@@ -15,11 +15,11 @@ export default function Welcome() {
 
   return (
     <AuthLayout title={`Welcome to ${APP_CONFIG.name}`} description={APP_CONFIG.tagline}>
-      <div className="flex flex-col gap-2">
-        <Button asChild className="w-full h-9">
+      <div className="flex flex-col gap-3">
+        <Button asChild className="w-full h-12 rounded-xl text-[16px] font-semibold">
           <Link to="/signup">Sign up</Link>
         </Button>
-        <Button asChild variant="outline" className="w-full h-9">
+        <Button asChild variant="secondary" className="w-full h-12 rounded-xl text-[16px] font-semibold">
           <Link to={APP_CONFIG.defaultLoginRoute}>Sign in</Link>
         </Button>
       </div>
