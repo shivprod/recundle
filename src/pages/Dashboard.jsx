@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import ApperIcon from '@/components/ApperIcon';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
   addressUser,
   getPersonalizedGreeting,
   getTimeOfDayGreeting,
+  normalizePreferredName,
   usePreferredName,
 } from '@/personalization';
 import { deriveSubscriptions, formatRupees, PERIOD_LABEL, useGmail } from '@/gmail';
@@ -281,9 +283,20 @@ function Subscriptions({ preferredName, gmail }) {
 }
 
 export default function Dashboard() {
-  const { preferredName, hasPreferredName, isLoading } = usePreferredName();
+  const { preferredName, hasPreferredName, isLoading, isResolved, setPreferredName } = usePreferredName();
+  const user = useSelector((s) => s.user.user);
   const gmail = useGmail();
   const { isConnected, sync, syncNow } = gmail;
+
+  // First-time users go through the sync screen before seeing their list.
+  const needsSyncStep = !hasPreferredName && (!gmail.hasDecided || (isConnected && !sync?.syncedAt));
+  // After that, their profile (Google) first name becomes their preferred name.
+  const profileName = normalizePreferredName(user?.firstName || gmail.account?.name?.split(' ')[0] || '');
+  const adoptProfileName = isResolved && gmail.isReady && !hasPreferredName && !needsSyncStep && Boolean(profileName);
+
+  useEffect(() => {
+    if (adoptProfileName) setPreferredName(profileName).catch(() => undefined);
+  }, [adoptProfileName, profileName, setPreferredName]);
 
   useEffect(() => {
     if (!isConnected || !sync || sync.status === 'syncing') return;
@@ -302,21 +315,25 @@ export default function Dashboard() {
   }
 
   if (!hasPreferredName) {
-    return <Navigate to={gmail.hasDecided ? '/onboarding/name' : '/onboarding/gmail'} replace />;
+    if (needsSyncStep) return <Navigate to="/onboarding/gmail" replace />;
+    if (!profileName) return <Navigate to="/onboarding/name" replace />;
   }
+
+  // Shown immediately while the profile name is being saved as the preferred name.
+  const name = preferredName || profileName;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pt-24 pb-12">
       <p className="text-sm text-muted-foreground">{getTimeOfDayGreeting()}</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-        {getPersonalizedGreeting(preferredName)}
+        {getPersonalizedGreeting(name)}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Your subscriptions. One place. Always on track.
       </p>
 
       {isConnected && !gmail.needsReconnect ? (
-        <Subscriptions preferredName={preferredName} gmail={gmail} />
+        <Subscriptions preferredName={name} gmail={gmail} />
       ) : (
         <ConnectGmailCard needsReconnect={gmail.needsReconnect} onConnect={gmail.connect} />
       )}

@@ -30,9 +30,20 @@ This repo began as an export of the Apper project `recription-tech-crowd` (the p
 
 ## Gmail receipts
 
-Onboarding is: Sign up / Sign in, then **Connect Gmail**, then the name step, then the dashboard. Sign-in with Google is Apper's social login, turned on in the Apper auth settings.
+Onboarding has three screens:
 
-- **Connect Gmail** (`src/gmail/`, `/onboarding/gmail`):
+1. **Sign up / Sign in.** Google sign-in is Apper's social login, turned on in the Apper auth settings.
+2. **Sync** (`/onboarding/gmail`).
+   - Logos of popular services (`SyncShowcase`, icons from [Simple Icons](https://simpleicons.org), CC0) float around the Recundle mark.
+   - Pressing **Sync with Gmail** connects Gmail, and the logos gather into the mark while the first page of receipts is read.
+   - The user stays on this screen until that first read finishes.
+3. **Subscriptions** (`/dashboard`): the user's real subscriptions.
+
+The profile (Google) first name becomes the preferred name automatically. "What should we call you?" only appears when the profile has no first name.
+
+Prime Video isn't in Simple Icons (Amazon asked for it to be removed), so its tile is a plain text tile in Prime's blue, not Amazon's logo. Check each brand's guidelines before a public launch.
+
+- **Gmail connection** (`src/gmail/`):
   - Opens Google's consent popup for `gmail.readonly` using Google Identity Services (code flow, `ux_mode: popup`).
   - The code goes to the `recundle` function's `auth` action with `redirectUri: "postmessage"`.
   - The returned sealed session is kept on the device, and the first receipt scan starts straight away, while the user is on the name step.

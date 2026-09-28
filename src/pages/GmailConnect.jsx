@@ -1,29 +1,42 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { APP_CONFIG, GENERIC_AUTH } from '@/config/app.config';
+import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { GENERIC_AUTH } from '@/config/app.config';
 import ApperIcon from '@/components/ApperIcon';
+import SyncShowcase from '@/components/SyncShowcase';
 import { Button } from '@/components/ui/button';
-import AuthLayout from '@/pages/auth/AuthLayout';
 import { usePreferredName } from '@/personalization';
 import { useGmail } from '@/gmail';
 
 export const route = { path: '/onboarding/gmail', layout: 'public', access: 'authenticated' };
 
-const NAME_STEP = '/onboarding/name';
+function errorMessage(err) {
+  if (err?.code === 'gmail_not_granted') {
+    return 'Gmail access wasn\'t granted. On Google\'s screen, tick "Read your email" so Recundle can find your receipts.';
+  }
+  return err?.message || 'Could not connect Gmail. Please try again.';
+}
 
-const POINTS = [
-  { icon: 'Receipt', text: 'We only search for receipts and invoices, from services like Netflix, Spotify and Google Play.' },
-  { icon: 'EyeOff', text: "Read-only. Recundle can't send, delete or change your email." },
-  { icon: 'Smartphone', text: 'Your subscription list is kept on this device. Disconnect any time.' },
-];
-
+/**
+ * First screen after sign-in: popular services float around the Recundle mark
+ * with a Sync button. Sync connects Gmail (read-only) and reads the first page
+ * of receipts here, so the next screen opens on real subscriptions.
+ */
 export default function GmailConnect() {
-  const navigate = useNavigate();
-  const { hasPreferredName, isLoading } = usePreferredName();
-  const { isReady, hasDecided, connect, skip } = useGmail();
+  const { preferredName, hasPreferredName, isLoading } = usePreferredName();
+  const user = useSelector((s) => s.user.user);
+  const { isReady, isConnected, hasDecided, sync, connect, skip, syncNow } = useGmail();
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState(null);
+
+  const firstSyncPending = isConnected && !sync?.syncedAt;
+  const firstSyncFailed = firstSyncPending && sync?.status === 'error';
+  const syncing = connecting || (firstSyncPending && !firstSyncFailed);
+
+  // Resume the first read after a reload mid-sync.
+  useEffect(() => {
+    if (firstSyncPending && sync?.status === 'idle') syncNow();
+  }, [firstSyncPending, sync?.status, syncNow]);
 
   if (isLoading || !isReady) {
     return (
@@ -32,61 +45,83 @@ export default function GmailConnect() {
       </div>
     );
   }
-  if (hasPreferredName) {
+  if (!connecting && !firstSyncPending && (hasDecided || hasPreferredName)) {
     return <Navigate to={GENERIC_AUTH.redirectAfterAuth} replace />;
   }
-  if (hasDecided && !connecting) {
-    return <Navigate to={NAME_STEP} replace />;
-  }
 
-  const handleConnect = async () => {
+  const handleSync = async () => {
     setError(null);
+    if (firstSyncFailed) {
+      syncNow();
+      return;
+    }
     setConnecting(true);
     try {
       await connect();
-      toast.success('Gmail connected. Finding your subscriptions…');
-      navigate(NAME_STEP, { replace: true });
     } catch (err) {
+      if (err?.code !== 'popup_closed') setError(errorMessage(err));
+    } finally {
       setConnecting(false);
-      if (err?.code === 'popup_closed') return;
-      if (err?.code === 'gmail_not_granted') {
-        setError('Gmail access wasn\'t granted. On Google\'s screen, tick "Read your email" to let Recundle find your receipts.');
-        return;
-      }
-      setError(err?.message || 'Could not connect Gmail. Please try again.');
     }
   };
 
-  const handleSkip = () => {
-    skip();
-    navigate(NAME_STEP, { replace: true });
-  };
+  const name = preferredName || user?.firstName;
+  const status = connecting && !isConnected
+    ? 'Waiting for Google…'
+    : sync?.scanned
+      ? `Reading your receipts… ${sync.scanned} emails checked`
+      : 'Reading your receipts…';
 
   return (
-    <AuthLayout
-      title="Find your subscriptions automatically"
-      description={`Connect Gmail and ${APP_CONFIG.name} will build your subscription list from your receipts.`}
-    >
-      <ul className="flex flex-col gap-3 mb-6">
-        {POINTS.map((p) => (
-          <li key={p.icon} className="flex items-start gap-3 text-sm">
-            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
-              <ApperIcon name={p.icon} size={15} />
-            </span>
-            <span className="min-w-0 text-muted-foreground">{p.text}</span>
-          </li>
-        ))}
-      </ul>
-      {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
-      <div className="flex flex-col gap-2">
-        <Button onClick={handleConnect} disabled={connecting} className="w-full h-9">
-          <ApperIcon name="Mail" size={16} />
-          {connecting ? 'Connecting…' : 'Connect Gmail'}
-        </Button>
-        <Button variant="ghost" onClick={handleSkip} disabled={connecting} className="w-full h-9">
-          Not now
-        </Button>
+    <main className="min-h-svh flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[26rem] flex flex-col items-center text-center">
+        <SyncShowcase syncing={syncing} />
+
+        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-balance">
+          {syncing
+            ? 'Finding your subscriptions…'
+            : name
+              ? `${name}, let's find your subscriptions`
+              : "Let's find your subscriptions"}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground text-balance">
+          {syncing
+            ? 'This takes a few seconds. Keep this screen open.'
+            : 'Sync Gmail and Recundle will read your receipts from services like these.'}
+        </p>
+
+        <div className="mt-6 w-full" aria-live="polite">
+          {syncing ? (
+            <div className="flex h-10 items-center justify-center gap-2 rounded-md bg-secondary text-sm font-medium text-secondary-foreground">
+              <ApperIcon name="Loader2" size={16} className="animate-spin" />
+              {status}
+            </div>
+          ) : (
+            <Button onClick={handleSync} className="w-full h-10">
+              <ApperIcon name="RefreshCw" size={16} />
+              {firstSyncFailed ? 'Try again' : 'Sync with Gmail'}
+            </Button>
+          )}
+        </div>
+
+        {(error || firstSyncFailed) && (
+          <p className="mt-3 text-sm text-destructive">{error || sync?.error}</p>
+        )}
+
+        <p className="mt-4 text-xs text-muted-foreground text-balance">
+          Read-only · Only receipts and invoices · Disconnect any time
+        </p>
+
+        {!syncing && !isConnected && (
+          <button
+            type="button"
+            onClick={skip}
+            className="mt-5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            Skip for now
+          </button>
+        )}
       </div>
-    </AuthLayout>
+    </main>
   );
 }
