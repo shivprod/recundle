@@ -147,3 +147,22 @@
   --priority-medium: oklch(0.78 0.14  75);
   --priority-low:    oklch(0.70 0.12 145);
 }
+
+/*
+ * Unlayered on purpose: body colour/font must beat any plain base styles from a
+ * host page (embeds, previews), which would otherwise outrank Tailwind's
+ * @layer base and leave inherited text dark in dark mode.
+ */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
