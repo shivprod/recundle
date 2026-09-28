@@ -5,8 +5,14 @@
  */
 .recundle-splash {
   --splash-offset: 0ms;
-  animation: recundle-splash-exit 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
-  animation-delay: calc(1380ms + var(--splash-offset));
+  animation: recundle-splash-exit 240ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: calc(1460ms + var(--splash-offset));
+}
+
+/* Brand content leaves first so it never overlaps the screen being revealed. */
+.recundle-splash__content {
+  animation: recundle-splash-content-exit 180ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation-delay: calc(1280ms + var(--splash-offset));
 }
 
 .recundle-splash__mark {
@@ -53,6 +59,11 @@
 @keyframes recundle-splash-exit {
   from { opacity: 1; }
   to   { opacity: 0; visibility: hidden; }
+}
+
+@keyframes recundle-splash-content-exit {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 @keyframes recundle-splash-fade {

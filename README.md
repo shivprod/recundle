@@ -24,6 +24,19 @@ This repo began as an export of the Apper project `recription-tech-crowd` (the p
   - `getPersonalizedGreeting()`, `getGreeting()`, `getTimeOfDayGreeting()`, `addressUser()`: greeting and copy helpers.
   - `getUserName()`: the name for non-React code.
 
+## Brand
+
+This follows the Recundle brand identity guidelines.
+
+- **Colours** (`src/theme.css`):
+  - Primary Teal `#4DAAA7`, Secondary Teal `#3F8F8B` and Charcoal `#333333`.
+  - Light-mode buttons and links use `#357A77`, a darker Secondary Teal tint, so white text stays readable (5.0:1 contrast).
+  - Dark mode uses the charcoal palette with Primary Teal accents.
+- **Typography:** Google Sans, weights 400 to 700, from Google Fonts.
+- **Logo:** `src/components/RecundleLogo.jsx` has `RecundleMark` (the symbol) and `RecundleLogo` (the lockup), plus `public/favicon.svg` for the app icon.
+  - The symbol is a vector trace of the guideline artwork. Swap in the official vector file when it's available.
+  - The mark is full colour on light backgrounds and switches to monochrome reversed (white) in dark mode, as the guidelines require.
+
 ## Preferred name storage
 
 The name is stored on the platform User record in the custom field `preferred_name_c` (via `sdk.admin.get/update('user', …)`), with a per-user copy in localStorage.

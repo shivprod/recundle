@@ -56,7 +56,6 @@ export default function NameSetup() {
     <AuthLayout
       title="What should we call you?"
       description={`We'll use your name to make ${APP_CONFIG.name} feel a little more personal.`}
-      icon="Smile"
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
         <div className="space-y-1">
