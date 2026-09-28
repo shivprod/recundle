@@ -8,7 +8,11 @@ This repo began as an export of the Apper project `recription-tech-crowd` (the p
 
 ## What's here
 
-- `src/apper/metadata/edge-functions/recription-api.js` is the backend (Apper edge function `recription-api`), which the Android app calls. `POST {action}`:
+- **Backend: two Apper edge functions with the same code.**
+  - `recundle` (`src/apper/metadata/edge-functions/recundle.js`) is the web app's backend. It requires an Apper sign-in, and the app calls it through `VITE_RECUNDLE`.
+  - `recription-api` (`recription-api.js`) is kept for the Android app, which calls it without an Apper sign-in.
+  - Both use the same secret and session key, so a Gmail session from one works with the other.
+  - `POST {action}`:
   - `auth` swaps the phone's Google `serverAuthCode` for tokens, checks the `gmail.readonly` scope, and returns an AES-GCM-sealed session. The server is stateless.
   - `me` returns the signed-in user.
   - `receipts` searches Gmail for receipts from about 39 known senders plus generic receipt subjects, and parses the merchant, amount, tax, billing period, renewal and trial dates, and payment instrument. It pages back through up to 2 years of history.
@@ -30,7 +34,7 @@ Onboarding is: Sign up / Sign in, then **Connect Gmail**, then the name step, th
 
 - **Connect Gmail** (`src/gmail/`, `/onboarding/gmail`):
   - Opens Google's consent popup for `gmail.readonly` using Google Identity Services (code flow, `ux_mode: popup`).
-  - The code goes to `recription-api` `auth` with `redirectUri: "postmessage"`.
+  - The code goes to the `recundle` function's `auth` action with `redirectUri: "postmessage"`.
   - The returned sealed session is kept on the device, and the first receipt scan starts straight away, while the user is on the name step.
 - **Sync:**
   - The first scan fetches the newest 60 emails, then backfills older pages in the background (up to 10 pages).
@@ -44,7 +48,7 @@ Onboarding is: Sign up / Sign in, then **Connect Gmail**, then the name step, th
 
 ### Setup needed for production
 
-1. **Backend:** redeploy `recription-api` with the `redirectUri` change in `src/apper/metadata/edge-functions/recription-api.js`, and port that change to the TypeScript source (`server/apper/recription-api.ts`).
+1. **Backend:** done on 2026-09-28. `recription-api` was redeployed with the web `redirectUri` change, and `recundle` was created. Still to do: port the `redirectUri` change to the TypeScript source (`server/apper/recription-api.ts`), and redeploy both functions whenever that source changes.
 2. **Google Cloud Console, OAuth web client:** add every web origin that serves the app (for example the Apper preview and production domains) under *Authorized JavaScript origins*.
 3. **Google Cloud Console, OAuth consent screen:** the app needs the `gmail.readonly` scope, which is a restricted scope.
    - While the app is in testing, add test users (up to 100). Their access expires after 7 days.
@@ -67,7 +71,7 @@ This follows the Recundle brand identity guidelines.
 
 The name is stored on the platform User record in the custom field `preferred_name_c` (via `sdk.admin.get/update('user', …)`), with a per-user copy in localStorage.
 
-**The live Apper database needs this field.** Add a Text field `preferred_name_c` to the User table. Until then, names are kept on the device only (saving logs a warning in the console).
+The `preferred_name_c` field (Text, optional) was added to the live User table on 2026-09-28. If a save to the server fails, the name is still kept on the device and a warning is logged in the console.
 
 ## Not included
 

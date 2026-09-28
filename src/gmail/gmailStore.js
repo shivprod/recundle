@@ -1,10 +1,10 @@
-import { callRecriptionApi, GmailApiError } from './api';
+import { callRecundleApi, GmailApiError } from './api';
 import { requestGmailCode } from './googleCodeClient';
 
 /**
  * Per-user Gmail connection and receipt sync.
  *
- * The recription-api session (the Google refresh token, sealed with the
+ * The recundle session (the Google refresh token, sealed with the
  * server's key) and the parsed receipts are kept on this device only, like the
  * Android app keeps them on the phone. Nothing Gmail-related is written to the
  * shared database.
@@ -98,7 +98,7 @@ function mergeEvents(existing, incoming) {
 }
 
 async function fetchPage(userId, params) {
-  const res = await callRecriptionApi('receipts', { session: state.connection?.session, ...params });
+  const res = await callRecundleApi('receipts', { session: state.connection?.session, ...params });
   const events = mergeEvents(state.sync.events, res.events ?? []);
   return { res, events };
 }
@@ -165,7 +165,7 @@ export function syncReceipts(userId) {
  */
 export async function connectGmail(userId, { loginHint } = {}) {
   const code = await requestGmailCode({ loginHint });
-  const res = await callRecriptionApi('auth', { serverAuthCode: code, redirectUri: 'postmessage' });
+  const res = await callRecundleApi('auth', { serverAuthCode: code, redirectUri: 'postmessage' });
   if (state.userId !== userId) return res.user;
 
   const connection = { session: res.session, email: res.user?.email ?? null, name: res.user?.name ?? null, connectedAt: new Date().toISOString() };
@@ -196,6 +196,6 @@ export async function disconnectGmail(userId) {
     setState({ connection: null, needsReconnect: false, sync: EMPTY_SYNC });
   }
   if (session) {
-    await callRecriptionApi('revoke', { session }).catch(() => undefined);
+    await callRecundleApi('revoke', { session }).catch(() => undefined);
   }
 }

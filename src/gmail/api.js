@@ -1,6 +1,7 @@
 import { sdk } from '@/services/sdk';
 
-export const RECRIPTION_FUNCTION = 'recription-api';
+// Apper function id for the `recundle` edge function (written to .env by Apper).
+export const RECUNDLE_FUNCTION = import.meta.env.VITE_RECUNDLE || 'recundle';
 
 // The web OAuth client shared with the Android app; client IDs are public.
 export const GOOGLE_WEB_CLIENT_ID =
@@ -9,7 +10,7 @@ export const GOOGLE_WEB_CLIENT_ID =
 
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
-/** Error from the recription-api function; `code` mirrors its `error` field. */
+/** Error from the recundle function; `code` mirrors its `error` field. */
 export class GmailApiError extends Error {
   constructor(message, code) {
     super(message);
@@ -19,12 +20,12 @@ export class GmailApiError extends Error {
 }
 
 /**
- * Calls the recription-api edge function. The SDK reports transport success
+ * Calls the recundle edge function. The SDK reports transport success
  * only, so failures are read from the `{ success: false, message, error }`
  * body the function returns.
  */
-export async function callRecriptionApi(action, body = {}) {
-  const result = await sdk.functions.invoke(RECRIPTION_FUNCTION, { action, ...body });
+export async function callRecundleApi(action, body = {}) {
+  const result = await sdk.functions.invoke(RECUNDLE_FUNCTION, { action, ...body });
   if (!result?.ok) {
     throw new GmailApiError(result?.error?.message || 'Could not reach Recundle. Check your connection.', 'network');
   }

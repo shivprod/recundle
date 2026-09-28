@@ -1,5 +1,5 @@
 /**
- * Turns parsed receipt events (from recription-api `receipts`) into
+ * Turns parsed receipt events (from the recundle function's `receipts` action) into
  * subscriptions. Amounts are in paise; dates are local `YYYY-MM-DD` strings.
  *
  * A merchant counts as a subscription when its receipts say so (a billing

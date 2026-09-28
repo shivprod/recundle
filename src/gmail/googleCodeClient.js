@@ -21,7 +21,7 @@ function loadGoogleIdentityServices() {
 
 /**
  * Opens Google's consent popup for read-only Gmail access and resolves with a
- * one-time authorization code for the recription-api `auth` action
+ * one-time authorization code for the recundle `auth` action
  * (exchanged server-side with redirect_uri "postmessage").
  */
 export async function requestGmailCode({ loginHint } = {}) {
