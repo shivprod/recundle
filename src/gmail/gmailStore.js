@@ -22,10 +22,13 @@ const EMPTY_SYNC = {
   backfillComplete: false,
   scanned: 0,
   error: null,
+  // Set when Gmail asks Recundle to pause: ISO time the next sync may run.
+  retryAt: null,
 };
 
 let state = { userId: null, connection: null, needsReconnect: false, sync: EMPTY_SYNC };
 let running = null;
+let retryTimer = null;
 // Bumped whenever the connection is replaced so in-flight syncs stop writing.
 let generation = 0;
 const listeners = new Set();
@@ -72,11 +75,28 @@ export function getSnapshot() {
   return state;
 }
 
+const pausedUntil = () => {
+  const at = Date.parse(state.sync.retryAt ?? '');
+  return Number.isFinite(at) && at > Date.now() ? at : null;
+};
+
+function scheduleRetry(userId) {
+  clearTimeout(retryTimer);
+  const at = pausedUntil();
+  if (at) retryTimer = setTimeout(() => syncReceipts(userId), at - Date.now() + 2000);
+}
+
+/** Time the user is told Gmail sync resumes, e.g. "3:42 pm". */
+export function formatResumeTime(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 /** Loads the stored connection for a user (no network). */
 export function loadGmailState(userId) {
   if (state.userId === userId) return;
   running = null;
   generation += 1;
+  clearTimeout(retryTimer);
   if (!userId) {
     setState({ userId: null, connection: null, needsReconnect: false, sync: EMPTY_SYNC });
     return;
@@ -88,6 +108,7 @@ export function loadGmailState(userId) {
     needsReconnect: false,
     sync: { ...EMPTY_SYNC, ...(stored ?? {}), status: 'idle', error: null },
   });
+  scheduleRetry(userId);
 }
 
 function mergeEvents(existing, incoming) {
@@ -106,7 +127,7 @@ async function runSync(userId) {
   const gen = generation;
   const alive = () => state.userId === userId && gen === generation;
   const first = !state.sync.syncedAt;
-  setSync(userId, { status: 'syncing', error: null }, gen);
+  setSync(userId, { status: 'syncing', error: null, retryAt: null }, gen);
 
   try {
     if (first) {
@@ -129,9 +150,13 @@ async function runSync(userId) {
       try {
         page = await fetchPage(userId, { before: state.sync.backfillBefore });
       } catch (err) {
-        // Older receipts are a bonus: if Gmail rate-limits, stop here and
-        // continue from the same point on the next sync.
-        if (err instanceof GmailApiError && err.code === 'rate_limited') break;
+        // Older receipts are a bonus: if Gmail asks us to pause, stop here
+        // and continue from the same point once the pause is over.
+        if (err instanceof GmailApiError && err.code === 'rate_limited') {
+          setSync(userId, { retryAt: err.retryAt ?? new Date(Date.now() + 60000).toISOString() }, gen);
+          scheduleRetry(userId);
+          break;
+        }
         throw err;
       }
       const { res, events } = page;
@@ -150,6 +175,16 @@ async function runSync(userId) {
     if (err instanceof GmailApiError && SIGNED_OUT_CODES.has(err.code)) {
       setState({ needsReconnect: true });
     }
+    if (err instanceof GmailApiError && err.code === 'rate_limited') {
+      const retryAt = err.retryAt ?? new Date(Date.now() + 60000).toISOString();
+      setSync(userId, {
+        status: 'error',
+        retryAt,
+        error: `Gmail asked Recundle to slow down. Recundle will sync again automatically at ${formatResumeTime(retryAt)}.`,
+      }, gen);
+      scheduleRetry(userId);
+      return;
+    }
     setSync(userId, { status: 'error', error: err?.message || 'Sync failed.' }, gen);
   }
 }
@@ -157,6 +192,8 @@ async function runSync(userId) {
 /** Starts (or joins) a receipt sync for the user; resolves when it finishes. */
 export function syncReceipts(userId) {
   if (!userId || state.userId !== userId || !state.connection) return Promise.resolve();
+  // Gmail asked us to pause: don't send anything until then (it would extend the pause).
+  if (pausedUntil()) return Promise.resolve();
   if (!running) {
     const current = runSync(userId).finally(() => {
       if (running === current) running = null;
@@ -191,6 +228,7 @@ export async function disconnectGmail(userId) {
   const session = state.userId === userId ? state.connection?.session : read('connection', userId)?.session;
   running = null;
   generation += 1;
+  clearTimeout(retryTimer);
   write('connection', userId, null);
   write('receipts', userId, null);
   if (state.userId === userId) {

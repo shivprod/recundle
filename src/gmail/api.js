@@ -10,10 +10,12 @@ export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
 /** Error from the Recundle backend; `code` mirrors its `error` field. */
 export class GmailApiError extends Error {
-  constructor(message, code) {
+  constructor(message, code, retryAt = null) {
     super(message);
     this.name = 'GmailApiError';
     this.code = code;
+    // When Gmail asks us to pause (code "rate_limited"): ISO time it's OK to retry.
+    this.retryAt = retryAt;
   }
 }
 
@@ -34,7 +36,7 @@ export async function callRecundleApi(action, body = {}) {
   }
   const value = await res.json().catch(() => null);
   if (!res.ok || !value || value.success === false) {
-    throw new GmailApiError(value?.message || 'Something went wrong while talking to Gmail.', value?.error || 'unexpected');
+    throw new GmailApiError(value?.message || 'Something went wrong while talking to Gmail.', value?.error || 'unexpected', value?.retryAt ?? null);
   }
   return value;
 }

@@ -211,7 +211,7 @@ var CLIENT_ID = "86235899973-st5it9v5gaajo3q2qv0jt84n2i7ar2jt.apps.googleusercon
 var GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 var TIMEZONE = "Asia/Kolkata";
 var BATCH = 60;
-var CONCURRENCY = 4;
+var CONCURRENCY = 2;
 var HttpError = class extends Error {
   constructor(status, message, extra = {}) {
     super(message);
@@ -267,8 +267,9 @@ async function accessToken(s) {
   const secret = await getSecret("GOOGLE_WEB_CLIENT_SECRET");
   return (await tokenCall({ refresh_token: s.rt, client_id: CLIENT_ID, client_secret: secret, grant_type: "refresh_token" })).access_token;
 }
-// Gmail allows about 50 message reads per second per user; pace well below it.
-var GMAIL_MIN_GAP_MS = 50;
+// Gmail allows about 50 message reads per second per user; pace well below it
+// (10 per second) so bursts never trip its per-user cool-down.
+var GMAIL_MIN_GAP_MS = 100;
 var gmailNextSlot = 0;
 async function gmailSlot() {
   const now = Date.now();
@@ -276,20 +277,43 @@ async function gmailSlot() {
   gmailNextSlot = Math.max(now, gmailNextSlot) + GMAIL_MIN_GAP_MS;
   if (wait) await sleep(wait);
 }
+// Once Gmail asks us to pause, stop every other request in this sync too.
+var gmailBlockedUntil = /* @__PURE__ */ new Map();
+function retryAtFrom(res, err) {
+  const m = /retry after (\S+?Z)/i.exec(err?.message ?? "");
+  const at = m ? Date.parse(m[1]) : NaN;
+  if (Number.isFinite(at)) return at;
+  const secs = Number(res.headers.get("retry-after"));
+  return secs > 0 ? Date.now() + secs * 1e3 : null;
+}
+function rateLimited(retryAt) {
+  return new HttpError(429, "Gmail asked Recundle to slow down. Recundle will sync again automatically in a few minutes.", {
+    error: "rate_limited",
+    retryAt: retryAt ? new Date(retryAt).toISOString() : null
+  });
+}
 async function gmail(path, token) {
   for (let attempt = 1; ; attempt++) {
+    const blocked = gmailBlockedUntil.get(token);
+    if (blocked && blocked > Date.now()) throw rateLimited(blocked);
     await gmailSlot();
     const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) return res.json();
     const err = (await res.json().catch(() => ({})))?.error;
     const reason = err?.errors?.[0]?.reason ?? err?.status ?? "";
+    console.warn(`[gmail] ${res.status} ${reason} attempt=${attempt}: ${String(err?.message ?? "").slice(0, 200)}`);
     const limited = res.status === 429 || res.status === 403 && /ratelimit|resource_exhausted|quota/i.test(reason);
-    if (limited && attempt < 5) {
-      const retryAfter = Number(res.headers.get("retry-after"));
-      await sleep(retryAfter > 0 ? Math.min(retryAfter, 10) * 1e3 : 1e3 * 2 ** (attempt - 1));
-      continue;
+    if (limited) {
+      const retryAt = retryAtFrom(res, err);
+      const waitMs = retryAt ? retryAt - Date.now() : 1e3 * 2 ** (attempt - 1);
+      if (attempt < 4 && waitMs <= 8e3) {
+        await sleep(Math.max(waitMs, 500));
+        continue;
+      }
+      const until = retryAt ?? Date.now() + 6e4;
+      gmailBlockedUntil.set(token, until);
+      throw rateLimited(until);
     }
-    if (limited) throw new HttpError(429, "Gmail is rate-limiting requests right now. Wait a minute and sync again.", { error: "rate_limited" });
     throw new HttpError(res.status === 401 ? 401 : 502, `Gmail API ${res.status}${reason ? ` (${reason})` : ""}`, { error: res.status === 401 ? "consent_revoked" : "gmail_error" });
   }
 }

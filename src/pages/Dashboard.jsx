@@ -27,6 +27,7 @@ import {
 } from '@/personalization';
 import { deriveSubscriptions, formatRupees, PERIOD_LABEL, useGmail } from '@/gmail';
 import { LOCAL_ACCOUNT } from '@/gmail/useGmail';
+import { formatResumeTime } from '@/gmail/gmailStore';
 
 export const route = { path: '/dashboard', layout: 'owner' };
 
@@ -205,11 +206,16 @@ function ReconnectCard({ onConnect }) {
   );
 }
 
+const isPaused = (sync) => Boolean(sync?.retryAt) && Date.parse(sync.retryAt) > Date.now();
+
 function GmailSection({ account, sync, onSync, onDisconnect }) {
   const syncing = sync.status === 'syncing';
+  const paused = !syncing && isPaused(sync);
   const status = syncing
     ? `Scanning receipts… ${plural(sync.scanned, 'email', 'emails')} checked`
-    : sync.syncedAt
+    : paused
+      ? `Gmail asked for a pause. Syncing again at ${formatResumeTime(sync.retryAt)}`
+      : sync.syncedAt
       ? `Synced ${formatRelativeTime(sync.syncedAt)}`
       : 'Not synced yet';
 
@@ -231,7 +237,7 @@ function GmailSection({ account, sync, onSync, onDisconnect }) {
           <button
             type="button"
             onClick={onSync}
-            disabled={syncing}
+            disabled={syncing || paused}
             className="flex w-full items-center gap-2 px-4 py-3.5 text-left text-[16px] font-medium text-primary disabled:opacity-50"
           >
             <ApperIcon name="RefreshCw" size={17} />
@@ -292,9 +298,11 @@ function Subscriptions({ preferredName, gmail }) {
       {sync.status === 'error' && (
         <p className="mt-4 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {sync.error}{' '}
-          <button type="button" onClick={handleSync} className="font-semibold underline underline-offset-4">
-            Try again
-          </button>
+          {!isPaused(sync) && (
+            <button type="button" onClick={handleSync} className="font-semibold underline underline-offset-4">
+              Try again
+            </button>
+          )}
         </p>
       )}
 

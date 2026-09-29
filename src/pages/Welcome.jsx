@@ -103,7 +103,7 @@ export default function Welcome() {
               {status}
             </div>
           ) : firstSyncFailed ? (
-            <Button onClick={handleContinue} className="w-full h-12 rounded-xl text-[16px] font-semibold">
+            <Button onClick={handleContinue} disabled={Date.parse(sync?.retryAt ?? '') > Date.now()} className="w-full h-12 rounded-xl text-[16px] font-semibold">
               <ApperIcon name="RefreshCw" size={16} />
               Try again
             </Button>
