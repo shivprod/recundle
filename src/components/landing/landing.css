@@ -1,0 +1,18 @@
+/* Supported-services strip: an endless, slow scroll that pauses on hover. */
+.landing-marquee {
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+.landing-marquee__track {
+  animation: landing-marquee 48s linear infinite;
+}
+.landing-marquee:hover .landing-marquee__track {
+  animation-play-state: paused;
+}
+@keyframes landing-marquee {
+  to { transform: translateX(calc(-50% - 0.375rem)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-marquee__track { animation: none; flex-wrap: wrap; width: auto; justify-content: center; }
+  .landing-marquee { mask-image: none; }
+  .landing-marquee__dup { display: none !important; }
+}

@@ -109,6 +109,17 @@ export function deriveSubscriptions(events, today = new Date()) {
     const amount = lastPayment?.amount ?? latest.amount ?? null;
     const status = isTrial ? 'trial' : isFailed ? 'failed' : 'active';
     const monthly = period && amount != null ? Math.round((amount * PERIOD_DAYS.monthly) / PERIOD_DAYS[period]) : null;
+    const yearly = period && amount != null ? Math.round((amount * PERIOD_DAYS.yearly) / PERIOD_DAYS[period]) : null;
+    // Every receipt from this merchant, newest first (payments, trials, failed payments).
+    const history = [...sorted].reverse().map((e) => ({
+      id: e.id,
+      date: e.date,
+      type: e.type,
+      amount: e.amount ?? null,
+      plan: e.plan ?? null,
+      paidWith: describeInstrument(e.instrument),
+      subject: e.subject ?? null,
+    }));
 
     subscriptions.push({
       id,
@@ -124,6 +135,10 @@ export function deriveSubscriptions(events, today = new Date()) {
       paidWith: describeInstrument(lastPayment?.instrument ?? latest.instrument),
       lastPaid: lastPayment?.date ?? null,
       failedOn: isFailed ? latest.date : null,
+      yearly,
+      history,
+      totalPaid: payments.reduce((sum, p) => sum + (p.amount ?? 0), 0),
+      paymentCount: payments.length,
     });
   }
 
@@ -138,7 +153,9 @@ export function deriveSubscriptions(events, today = new Date()) {
     subscriptions,
     paidCount: paid.length,
     trialCount: subscriptions.length - paid.length,
+    attentionCount: subscriptions.filter((s) => s.status === 'failed').length,
     monthlyTotal: paid.reduce((sum, s) => sum + (s.monthly ?? 0), 0),
+    yearlyTotal: paid.reduce((sum, s) => sum + (s.yearly ?? 0), 0),
     renewingThisWeek: subscriptions.filter((s) => s.daysUntilRenewal != null && s.daysUntilRenewal >= 0 && s.daysUntilRenewal <= 7),
     lapsed,
   };
@@ -154,5 +171,11 @@ export function formatRupees(paise, { perMonth = false, whole = false } = {}) {
   }).format(rupees);
   return perMonth ? `${text}/month` : text;
 }
+
+export const EVENT_LABEL = {
+  payment: 'Payment',
+  trial_started: 'Free trial started',
+  payment_failed: 'Payment failed',
+};
 
 export const PERIOD_LABEL = { monthly: 'month', quarterly: 'quarter', 'half-yearly': '6 months', yearly: 'year' };

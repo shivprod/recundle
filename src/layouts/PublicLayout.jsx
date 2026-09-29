@@ -1,13 +1,9 @@
 import { Outlet } from 'react-router-dom';
-import ThemeToggle from '@/components/ThemeToggle';
 import StartupSplash from '@/components/StartupSplash';
 
 export default function PublicLayout() {
   return (
-    <div className="min-h-svh bg-background relative">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
+    <div className="min-h-svh bg-background">
       <Outlet />
       <StartupSplash />
     </div>

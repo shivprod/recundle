@@ -6,7 +6,7 @@
 .sync-stage {
   position: relative;
   width: 100%;
-  max-width: 380px;
+  max-width: var(--sync-stage-max, 380px);
   aspect-ratio: 1 / 0.92;
   margin-inline: auto;
   container-type: inline-size;

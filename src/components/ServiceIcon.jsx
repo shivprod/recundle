@@ -50,7 +50,7 @@ export function findBrand(name) {
 /** App-icon style tile for a subscription: brand mark if known, else its initial. */
 export default function ServiceIcon({ name, className }) {
   const brand = findBrand(name);
-  const base = 'flex size-10 shrink-0 items-center justify-center rounded-[11px] text-white';
+  const base = '@container flex size-10 shrink-0 items-center justify-center rounded-[11px] text-white';
 
   if (!brand) {
     return (
@@ -72,7 +72,7 @@ export default function ServiceIcon({ name, className }) {
           <path d={brand.path} />
         </svg>
       ) : (
-        <span className="text-[10px] font-bold leading-none">{brand.label}</span>
+        <span className="text-[24cqw] font-bold leading-none">{brand.label}</span>
       )}
     </div>
   );
