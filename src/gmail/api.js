@@ -4,7 +4,7 @@ export const RECUNDLE_API_URL = import.meta.env.VITE_RECUNDLE_API_URL || '/api/r
 // The web OAuth client shared with the Android app; client IDs are public.
 export const GOOGLE_WEB_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID ||
-  '86235899973-st5it9v5gaajo3q2qv0jt84n2i7ar2jt.apps.googleusercontent.com';
+  '286940691052-ss6b2j3m1hfp69678ce04oburpmjunuf.apps.googleusercontent.com';
 
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
