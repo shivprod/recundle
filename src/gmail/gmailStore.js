@@ -2,7 +2,7 @@ import { callRecundleApi, GmailApiError } from './api';
 import { requestGmailCode } from './googleCodeClient';
 
 /**
- * Per-user Gmail connection and receipt sync.
+ * The signed-in Google account (read-only Gmail) and its receipt sync.
  *
  * The recundle session (the Google refresh token, sealed with the
  * server's key) and the parsed receipts are kept on this device only, like the
@@ -24,7 +24,7 @@ const EMPTY_SYNC = {
   error: null,
 };
 
-let state = { userId: null, connection: null, skipped: false, needsReconnect: false, sync: EMPTY_SYNC };
+let state = { userId: null, connection: null, needsReconnect: false, sync: EMPTY_SYNC };
 let running = null;
 // Bumped whenever the connection is replaced so in-flight syncs stop writing.
 let generation = 0;
@@ -78,14 +78,13 @@ export function loadGmailState(userId) {
   running = null;
   generation += 1;
   if (!userId) {
-    setState({ userId: null, connection: null, skipped: false, needsReconnect: false, sync: EMPTY_SYNC });
+    setState({ userId: null, connection: null, needsReconnect: false, sync: EMPTY_SYNC });
     return;
   }
   const stored = read('receipts', userId);
   setState({
     userId,
     connection: read('connection', userId),
-    skipped: Boolean(read('skipped', userId)),
     needsReconnect: false,
     sync: { ...EMPTY_SYNC, ...(stored ?? {}), status: 'idle', error: null },
   });
@@ -159,8 +158,8 @@ export function syncReceipts(userId) {
 }
 
 /**
- * Asks Google for read-only Gmail access, exchanges the code for a sealed
- * session and starts the first sync in the background. Resolves with the
+ * Signs in with Google (with read-only Gmail access), exchanges the code for a
+ * sealed session and starts the first sync in the background. Resolves with the
  * Google account `{ email, name }` as soon as the connection is saved.
  */
 export async function connectGmail(userId, { loginHint } = {}) {
@@ -170,22 +169,15 @@ export async function connectGmail(userId, { loginHint } = {}) {
 
   const connection = { session: res.session, email: res.user?.email ?? null, name: res.user?.name ?? null, connectedAt: new Date().toISOString() };
   write('connection', userId, connection);
-  write('skipped', userId, null);
   write('receipts', userId, null);
   generation += 1;
   running = null;
-  setState({ sync: EMPTY_SYNC, connection, skipped: false, needsReconnect: false });
+  setState({ sync: EMPTY_SYNC, connection, needsReconnect: false });
   syncReceipts(userId);
   return res.user;
 }
 
-export function skipGmail(userId) {
-  if (!userId) return;
-  write('skipped', userId, true);
-  if (state.userId === userId) setState({ skipped: true });
-}
-
-/** Revokes Google access and forgets the session and receipts on this device. */
+/** Signs out: revokes Google access and forgets the session and receipts on this device. */
 export async function disconnectGmail(userId) {
   const session = state.userId === userId ? state.connection?.session : read('connection', userId)?.session;
   running = null;

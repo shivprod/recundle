@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import ApperIcon from '@/components/ApperIcon';
 import ServiceIcon from '@/components/ServiceIcon';
@@ -20,14 +19,16 @@ import { cn } from '@/lib/utils';
 import { formatLocalDate, formatRelativeTime } from '@/utils/date';
 import {
   addressUser,
+  clearPreferredName,
   getPersonalizedGreeting,
   getTimeOfDayGreeting,
   normalizePreferredName,
   usePreferredName,
 } from '@/personalization';
 import { deriveSubscriptions, formatRupees, PERIOD_LABEL, useGmail } from '@/gmail';
+import { LOCAL_ACCOUNT } from '@/gmail/useGmail';
 
-export const route = { path: '/dashboard', layout: 'owner', access: 'authenticated' };
+export const route = { path: '/dashboard', layout: 'owner' };
 
 // Re-sync on open when the last sync is older than this.
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -165,7 +166,7 @@ function SummaryCard({ monthlyTotal, paidCount, trialCount, renewingCount, headl
   );
 }
 
-function ConnectGmailCard({ needsReconnect, onConnect }) {
+function ReconnectCard({ onConnect }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -174,9 +175,9 @@ function ConnectGmailCard({ needsReconnect, onConnect }) {
     setConnecting(true);
     try {
       await onConnect();
-      toast.success('Gmail connected. Finding your subscriptions…');
+      toast.success('Signed in again. Updating your subscriptions…');
     } catch (err) {
-      if (err?.code !== 'popup_closed') setError(err?.message || 'Could not connect Gmail. Please try again.');
+      if (err?.code !== 'popup_closed') setError(err?.message || 'Could not sign in with Google. Please try again.');
     } finally {
       setConnecting(false);
     }
@@ -190,17 +191,15 @@ function ConnectGmailCard({ needsReconnect, onConnect }) {
         ))}
       </div>
       <h2 className="mt-5 text-[20px] font-semibold tracking-tight">
-        {needsReconnect ? 'Reconnect Gmail to keep your list up to date' : 'Find your subscriptions automatically'}
+        Sign in again to keep your list up to date
       </h2>
       <p className="mt-1.5 max-w-sm text-[15px] text-muted-foreground">
-        {needsReconnect
-          ? 'Google access for Recundle ended. Reconnect to continue reading your receipts.'
-          : 'Connect Gmail and Recundle will build your list from your receipts. Read-only, and you can disconnect any time.'}
+        Google access for Recundle ended. Continue with Google to keep reading your receipts.
       </p>
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
       <Button onClick={handleConnect} disabled={connecting} className="mt-6 h-12 w-full max-w-xs rounded-xl text-[16px] font-semibold">
-        <ApperIcon name="Mail" size={18} />
-        {connecting ? 'Connecting…' : needsReconnect ? 'Reconnect Gmail' : 'Connect Gmail'}
+        <ApperIcon name="LogIn" size={18} />
+        {connecting ? 'Signing in…' : 'Continue with Google'}
       </Button>
     </section>
   );
@@ -215,7 +214,7 @@ function GmailSection({ account, sync, onSync, onDisconnect }) {
       : 'Not synced yet';
 
   return (
-    <Section title="Gmail" footer="Read-only. Recundle only looks at receipts and invoices.">
+    <Section title="Account" footer="Read-only Gmail access. Recundle only looks at receipts and invoices.">
       <ul>
         <Row
           first
@@ -246,20 +245,20 @@ function GmailSection({ account, sync, onSync, onDisconnect }) {
                 type="button"
                 className="flex w-full items-center gap-2 px-4 py-3.5 text-left text-[16px] font-medium text-destructive"
               >
-                <ApperIcon name="Unplug" size={17} />
-                Disconnect Gmail
+                <ApperIcon name="LogOut" size={17} />
+                Sign out
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Disconnect Gmail?</AlertDialogTitle>
+                <AlertDialogTitle>Sign out of Recundle?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Recundle will stop reading your receipts, and the subscriptions it found will be removed from this device.
+                  Recundle will stop reading your Gmail, and the subscriptions it found will be removed from this device.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDisconnect}>Disconnect</AlertDialogAction>
+                <AlertDialogAction onClick={onDisconnect}>Sign out</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -284,7 +283,8 @@ function Subscriptions({ preferredName, gmail }) {
   const handleSync = () => gmail.syncNow();
   const handleDisconnect = async () => {
     await gmail.disconnect();
-    toast.success('Gmail disconnected.');
+    clearPreferredName(LOCAL_ACCOUNT);
+    toast.success('Signed out.');
   };
 
   return (
@@ -373,16 +373,13 @@ function Subscriptions({ preferredName, gmail }) {
 }
 
 export default function Dashboard() {
-  const { preferredName, hasPreferredName, isLoading, isResolved, setPreferredName } = usePreferredName();
-  const user = useSelector((s) => s.user.user);
+  const { preferredName, hasPreferredName, setPreferredName } = usePreferredName();
   const gmail = useGmail();
   const { isConnected, sync, syncNow } = gmail;
 
-  // First-time users go through the sync screen before seeing their list.
-  const needsSyncStep = !hasPreferredName && (!gmail.hasDecided || (isConnected && !sync?.syncedAt));
-  // After that, their profile (Google) first name becomes their preferred name.
-  const profileName = normalizePreferredName(user?.firstName || gmail.account?.name?.split(' ')[0] || '');
-  const adoptProfileName = isResolved && gmail.isReady && !hasPreferredName && !needsSyncStep && Boolean(profileName);
+  // The Google profile's first name is the default preferred name.
+  const profileName = normalizePreferredName(gmail.account?.name?.split(' ')[0] || '');
+  const adoptProfileName = isConnected && !hasPreferredName && Boolean(profileName);
 
   useEffect(() => {
     if (adoptProfileName) setPreferredName(profileName).catch(() => undefined);
@@ -396,7 +393,7 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
-  if (isLoading || !gmail.isReady) {
+  if (!gmail.isReady) {
     return (
       <div className="min-h-svh flex items-center justify-center">
         <ApperIcon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
@@ -404,12 +401,9 @@ export default function Dashboard() {
     );
   }
 
-  if (!hasPreferredName) {
-    if (needsSyncStep) return <Navigate to="/onboarding/gmail" replace />;
-    if (!profileName) return <Navigate to="/onboarding/name" replace />;
-  }
+  // Signed out, or still on the first read of receipts: that happens on the sign-in screen.
+  if (!isConnected || !sync?.syncedAt) return <Navigate to="/" replace />;
 
-  // Shown immediately while the profile name is being saved as the preferred name.
   const name = preferredName || profileName;
 
   return (
@@ -422,10 +416,10 @@ export default function Dashboard() {
         Your subscriptions. One place. Always on track.
       </p>
 
-      {isConnected && !gmail.needsReconnect ? (
-        <Subscriptions preferredName={name} gmail={gmail} />
+      {gmail.needsReconnect ? (
+        <ReconnectCard onConnect={gmail.connect} />
       ) : (
-        <ConnectGmailCard needsReconnect={gmail.needsReconnect} onConnect={gmail.connect} />
+        <Subscriptions preferredName={name} gmail={gmail} />
       )}
     </main>
   );

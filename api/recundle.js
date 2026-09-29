@@ -1,5 +1,7 @@
-// server/apper/recription-api.ts
-import apper from "https://cdn.apper.io/actions/apper-actions.js";
+// Recundle backend (Vercel function): Google sign-in with read-only Gmail access,
+// sealed sessions, and receipt parsing. Ported from the Apper edge function;
+// the only secret is GOOGLE_WEB_CLIENT_SECRET (a Vercel environment variable).
+const getSecret = async (name) => process.env[name];
 
 // src/domain/dates.ts
 var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -201,7 +203,6 @@ var RECEIPT_SENDER_DOMAINS = [
   "airtel.in"
 ];
 
-// server/apper/recription-api.ts
 var CLIENT_ID = "86235899973-st5it9v5gaajo3q2qv0jt84n2i7ar2jt.apps.googleusercontent.com";
 var GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 var TIMEZONE = "Asia/Kolkata";
@@ -223,7 +224,7 @@ var unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")
 var keyPromise = null;
 async function sessionKey() {
   keyPromise ??= (async () => {
-    const secret = await apper.getSecret("GOOGLE_WEB_CLIENT_SECRET");
+    const secret = await getSecret("GOOGLE_WEB_CLIENT_SECRET");
     if (!secret) throw new HttpError(503, "Server is not configured yet (missing GOOGLE_WEB_CLIENT_SECRET).");
     const ikm = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), "HKDF", false, ["deriveKey"]);
     return crypto.subtle.deriveKey(
@@ -259,7 +260,7 @@ async function tokenCall(body) {
   return j;
 }
 async function accessToken(s) {
-  const secret = await apper.getSecret("GOOGLE_WEB_CLIENT_SECRET");
+  const secret = await getSecret("GOOGLE_WEB_CLIENT_SECRET");
   return (await tokenCall({ refresh_token: s.rt, client_id: CLIENT_ID, client_secret: secret, grant_type: "refresh_token" })).access_token;
 }
 async function gmail(path, token) {
@@ -302,7 +303,7 @@ async function mapLimit(items, limit, fn) {
 async function auth(body) {
   const code = body.serverAuthCode;
   if (typeof code !== "string" || !code) throw new HttpError(400, "serverAuthCode is required");
-  const secret = await apper.getSecret("GOOGLE_WEB_CLIENT_SECRET");
+  const secret = await getSecret("GOOGLE_WEB_CLIENT_SECRET");
   // Android sends a serverAuthCode (no redirect URI); the web app uses Google's popup code flow ("postmessage").
   const redirectUri = body.redirectUri === "postmessage" ? "postmessage" : "";
   const t = await tokenCall({ code, client_id: CLIENT_ID, client_secret: secret, grant_type: "authorization_code", redirect_uri: redirectUri });
@@ -310,7 +311,7 @@ async function auth(body) {
   const info = await infoRes.json();
   if (!infoRes.ok || info.aud !== CLIENT_ID) throw new HttpError(401, "Google sign-in could not be verified");
   if (!String(t.scope ?? "").includes(GMAIL_SCOPE)) throw new HttpError(403, "Gmail read access wasn’t granted. Sign in again and allow “Read your email”.", { error: "gmail_not_granted" });
-  if (!t.refresh_token) throw new HttpError(409, "Google didn’t grant ongoing access. Remove Recription at myaccount.google.com › Security › Third-party access, then sign in again.", { error: "no_refresh_token" });
+  if (!t.refresh_token) throw new HttpError(409, "Google didn’t grant ongoing access. Remove Recundle at myaccount.google.com › Security › Third-party access, then sign in again.", { error: "no_refresh_token" });
   const s = { rt: t.refresh_token, sub: info.sub, email: info.email, name: info.name ?? info.email, v: 1 };
   return { session: await seal(s), user: { email: s.email, name: s.name } };
 }
@@ -345,9 +346,8 @@ async function revoke(body) {
   if (s) await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(s.rt)}`, { method: "POST" }).catch(() => void 0);
   return { revoked: true };
 }
-apper.serve(async (req) => {
+export async function POST(req) {
   try {
-    if (req.method !== "POST") return json(405, { success: false, message: "Use POST" });
     const body = await req.json().catch(() => ({}));
     switch (body.action) {
       case "auth":
@@ -367,4 +367,8 @@ apper.serve(async (req) => {
     if (e instanceof HttpError) return json(e.status, { success: false, message: e.message, ...e.extra });
     return json(502, { success: false, message: e instanceof Error ? e.message : "Unexpected error", error: "unexpected" });
   }
-});
+}
+
+export function GET() {
+  return json(405, { success: false, message: "Use POST" });
+}

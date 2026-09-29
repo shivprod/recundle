@@ -2,68 +2,58 @@
 
 *Track. Bundle. Recundle.*
 
-Subscription tracker that finds your recurring payments by reading receipt emails in Gmail (read-only).
+A web app that finds your subscriptions by reading the receipt emails in your Gmail (read-only).
 
-This repo began as an export of the Apper project `recription-tech-crowd` (the product was previously called Recription) on 2026-09-28.
+It runs on Vercel: a React site plus one serverless function. It doesn't use Apper any more. The project began as an export of the Apper project `recription-tech-crowd` (the product was previously called Recription).
 
-## What's here
+## How it works
 
-- **Backend: two Apper edge functions with the same code.**
-  - `recundle` (`src/apper/metadata/edge-functions/recundle.js`) is the web app's backend. It requires an Apper sign-in, and the app calls it through `VITE_RECUNDLE`.
-  - `recription-api` (`recription-api.js`) is kept for the Android app, which calls it without an Apper sign-in.
-  - Both use the same secret and session key, so a Gmail session from one works with the other.
-  - `POST {action}`:
-  - `auth` swaps the phone's Google `serverAuthCode` for tokens, checks the `gmail.readonly` scope, and returns an AES-GCM-sealed session. The server is stateless.
+1. **Sign in** (`/`). One button: **Continue with Google**.
+   - Google's popup asks for the profile and read-only Gmail access (`gmail.readonly`) in the same step.
+   - Logos of popular services (`SyncShowcase`, icons from [Simple Icons](https://simpleicons.org), CC0) float around the Recundle mark. They gather into the mark while the first page of receipts is read.
+2. **Subscriptions** (`/dashboard`). The greeting uses the first name from the Google profile. Subscriptions are grouped into *Needs attention*, *This week* and *Coming up*, with a monthly total at the top.
+3. **Sign out** revokes Google access and removes the session, receipts and name from the device.
+
+There are no Recundle accounts or passwords, and no database. The Google sign-in is the account. The sealed session and the parsed receipts are kept in the browser (localStorage), one account per browser.
+
+## Code
+
+- **`api/recundle.js`** is the backend, a Vercel function. It takes `POST /api/recundle` with `{ action }`:
+  - `auth` exchanges Google's one-time code (`redirectUri: "postmessage"`) for tokens. It checks that `gmail.readonly` was granted and returns an AES-GCM-sealed session. The server is stateless.
   - `me` returns the signed-in user.
-  - `receipts` searches Gmail for receipts from about 39 known senders plus generic receipt subjects, and parses the merchant, amount, tax, billing period, renewal and trial dates, and payment instrument. It pages back through up to 2 years of history.
+  - `receipts` searches Gmail for receipts from about 39 known senders plus generic receipt subjects. It parses the merchant, amount, tax, billing period, renewal and trial dates, and the payment method, and pages back through up to 2 years.
   - `revoke` revokes the Google refresh token.
-  - It needs the Apper secret `GOOGLE_WEB_CLIENT_SECRET`.
-- Web app (React 19, Vite, Tailwind 4, shadcn/ui on the Apper scaffold):
-  - `StartupSplash` plays a short brand intro on launch.
-  - `/` is the Welcome screen (Sign up / Sign in, using Apper's built-in auth).
-  - `/onboarding/name` asks "What should we call you?" the first time only.
-  - `/dashboard` is the main screen, with a personalised greeting.
-- `src/personalization/` is the reusable personalization layer:
-  - `usePreferredName()`: the signed-in user's name, loaded once and shared.
-  - `getPersonalizedGreeting()`, `getGreeting()`, `getTimeOfDayGreeting()`, `addressUser()`: greeting and copy helpers.
-  - `getUserName()`: the name for non-React code.
+  - It needs one environment variable, `GOOGLE_WEB_CLIENT_SECRET`. The same value also keys the sealed sessions, so changing it signs everyone out.
+- **`src/gmail/`**:
+  - `googleCodeClient.js`: the Google Identity Services popup.
+  - `gmailStore.js`: the session, receipt sync, and background backfill of up to 10 pages of 60 emails.
+  - `useGmail.js`: the React hook.
+  - `subscriptions.js`: turns receipts into subscriptions.
+- **`src/personalization/`**: the preferred name (Google first name by default) and greeting helpers.
+- **`src/pages/`**: `Welcome.jsx` (`/`, sign-in) and `Dashboard.jsx` (`/dashboard`). Pages register themselves with `export const route`.
+- **`landing/index.html`**: a standalone marketing page.
 
-## Gmail receipts
+## Deploy (Vercel)
 
-Onboarding has three screens:
-
-1. **Sign up / Sign in.** Google sign-in is Apper's social login, turned on in the Apper auth settings.
-2. **Sync** (`/onboarding/gmail`).
-   - Logos of popular services (`SyncShowcase`, icons from [Simple Icons](https://simpleicons.org), CC0) float around the Recundle mark.
-   - Pressing **Sync with Gmail** connects Gmail, and the logos gather into the mark while the first page of receipts is read.
-   - The user stays on this screen until that first read finishes.
-3. **Subscriptions** (`/dashboard`): the user's real subscriptions.
-
-The profile (Google) first name becomes the preferred name automatically. "What should we call you?" only appears when the profile has no first name.
-
-Prime Video isn't in Simple Icons (Amazon asked for it to be removed), so its tile is a plain text tile in Prime's blue, not Amazon's logo. Check each brand's guidelines before a public launch.
-
-- **Gmail connection** (`src/gmail/`):
-  - Opens Google's consent popup for `gmail.readonly` using Google Identity Services (code flow, `ux_mode: popup`).
-  - The code goes to the `recundle` function's `auth` action with `redirectUri: "postmessage"`.
-  - The returned sealed session is kept on the device, and the first receipt scan starts straight away, while the user is on the name step.
-- **Sync:**
-  - The first scan fetches the newest 60 emails, then backfills older pages in the background (up to 10 pages).
-  - Opening the dashboard runs an incremental sync (`since`) when the last sync is more than 10 minutes old.
-- **Subscriptions** (`src/gmail/subscriptions.js`):
-  - Receipts are grouped by merchant.
-  - A merchant counts as a subscription when its receipts show a billing period, a renewal date or a free trial, or when it charges the same amount at a regular interval.
-  - Lapsed plans and one-off orders are left out.
-  - Failed payments from the last 30 days are shown first.
-- **Disconnect** revokes the Google token and removes the receipts from the device.
-
-### Setup needed for production
-
-1. **Backend:** done on 2026-09-28. `recription-api` was redeployed with the web `redirectUri` change, and `recundle` was created. Still to do: port the `redirectUri` change to the TypeScript source (`server/apper/recription-api.ts`), and redeploy both functions whenever that source changes.
-2. **Google Cloud Console, OAuth web client:** add every web origin that serves the app (for example the Apper preview and production domains) under *Authorized JavaScript origins*.
-3. **Google Cloud Console, OAuth consent screen:** the app needs the `gmail.readonly` scope, which is a restricted scope.
+1. Import this GitHub repo as a Vercel project. The framework is detected as Vite, and `vercel.json` sets the SPA rewrites and the function timeout.
+2. In the Vercel project's environment variables, add `GOOGLE_WEB_CLIENT_SECRET`: the client secret of the Google OAuth *Web application* client `86235899973-st5it9v5gaajo3q2qv0jt84n2i7ar2jt`.
+3. In Google Cloud (APIs & Services → Credentials → the web client), add the Vercel address (for example `https://recundle.vercel.app`) under **Authorized JavaScript origins**. No redirect URI is needed, because the popup code flow uses `postmessage`.
+4. **OAuth consent screen:** `gmail.readonly` is a restricted scope.
    - While the app is in testing, add test users (up to 100). Their access expires after 7 days.
    - A public launch needs Google's verification and a security assessment, plus a privacy policy that meets Google's Limited Use requirements.
+
+## Run locally
+
+```sh
+npm install
+npx vercel dev   # serves the site and /api/recundle together
+```
+
+`npm run dev` (Vite only) serves the site without the backend. Add `http://localhost:3000` to the Google client's JavaScript origins for local sign-in.
+
+## Android
+
+The Android app talks to the Apper function `recription-api`, which is still deployed there. The Android app's code isn't in this repo. Moving it off Apper means pointing it at `https://<your-vercel-domain>/api/recundle`. The `auth` action already accepts the Android `serverAuthCode`.
 
 ## Brand
 
@@ -71,28 +61,14 @@ This follows the Recundle brand identity guidelines.
 
 - **Colours** (`src/theme.css`):
   - Primary Teal `#4DAAA7`, Secondary Teal `#3F8F8B` and Charcoal `#333333`.
-  - Light-mode buttons and links use `#357A77`, a darker Secondary Teal tint, so white text stays readable (5.0:1 contrast).
+  - Light-mode buttons and links use `#357A77`, so white text stays readable (5.0:1 contrast).
   - Dark mode uses the charcoal palette with Primary Teal accents.
 - **Typography:** Google Sans, weights 400 to 700, from Google Fonts.
-- **Logo:** `src/components/RecundleLogo.jsx` has `RecundleMark` (the symbol) and `RecundleLogo` (the lockup), plus `public/favicon.svg` for the app icon.
+- **Logo:** `src/components/RecundleLogo.jsx` (`RecundleMark` and the `RecundleLogo` lockup) and `public/favicon.svg`.
   - The symbol is a vector trace of the guideline artwork. Swap in the official vector file when it's available.
-  - The mark is full colour on light backgrounds and switches to monochrome reversed (white) in dark mode, as the guidelines require.
-
-## Preferred name storage
-
-The name is stored on the platform User record in the custom field `preferred_name_c` (via `sdk.admin.get/update('user', …)`), with a per-user copy in localStorage.
-
-The `preferred_name_c` field (Text, optional) was added to the live User table on 2026-09-28. If a save to the server fails, the name is still kept on the device and a warning is logged in the console.
+  - In dark mode the mark switches to monochrome reversed (white).
+- **Prime Video** isn't in Simple Icons, so its tile is a plain text tile in Prime's blue. Check each brand's guidelines before a public launch.
 
 ## Not included
 
-- **Original TypeScript source.** The edge function is a bundled build of `server/apper/recription-api.ts`, `src/detection/*` and `src/domain/*`. Those source files and the Android app weren't in Apper and need adding separately.
-- `.env` (see `.env.example`) and `public/favicon.ico`.
-
-## Run the web app
-
-```sh
-cp .env.example .env   # fill in values from Apper
-npm install
-npm run dev
-```
+The original TypeScript source of the backend (`server/apper/recription-api.ts`, `src/detection/*` and `src/domain/*`) and the Android app. `api/recundle.js` is the bundled build of that source.

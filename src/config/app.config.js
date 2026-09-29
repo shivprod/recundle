@@ -14,7 +14,7 @@ export const APP_CONFIG = {
   icon: 'Box',
 
   defaultTheme: 'system',
-  defaultLoginRoute: '/login',
+  defaultLoginRoute: '/',
 };
 
 /**

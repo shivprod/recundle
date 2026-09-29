@@ -1,36 +1,35 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { useSelector } from 'react-redux';
 import {
   connectGmail,
   disconnectGmail,
   getSnapshot,
   loadGmailState,
-  skipGmail,
   subscribe,
   syncReceipts,
 } from './gmailStore';
 
-/** The signed-in user's Gmail connection and synced receipts. */
+// Recundle signs people in with Google directly, so the Google connection is
+// the account. One account per browser; signing out forgets it.
+export const LOCAL_ACCOUNT = 'local';
+
+/** The Google (Gmail) account signed in on this device and its synced receipts. */
 export function useGmail() {
-  const user = useSelector((s) => s.user.user);
-  const userId = user?.userId ?? null;
+  const userId = LOCAL_ACCOUNT;
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
 
   useEffect(() => {
     loadGmailState(userId);
   }, [userId]);
 
-  const current = Boolean(userId) && snapshot.userId === userId;
+  const current = snapshot.userId === userId;
 
   return {
     isReady: current,
     isConnected: current && Boolean(snapshot.connection),
-    hasDecided: current && (Boolean(snapshot.connection) || snapshot.skipped),
     needsReconnect: current && snapshot.needsReconnect,
     account: current ? snapshot.connection : null,
     sync: current ? snapshot.sync : null,
-    connect: useCallback(() => connectGmail(userId, { loginHint: user?.emailAddress }), [userId, user?.emailAddress]),
-    skip: useCallback(() => skipGmail(userId), [userId]),
+    connect: useCallback(() => connectGmail(userId, { loginHint: getSnapshot().connection?.email }), [userId]),
     disconnect: useCallback(() => disconnectGmail(userId), [userId]),
     syncNow: useCallback(() => syncReceipts(userId), [userId]),
   };

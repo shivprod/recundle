@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { useSelector } from 'react-redux';
+import { LOCAL_ACCOUNT } from '@/gmail/useGmail';
 import {
   getSnapshot,
   loadPreferredName,
@@ -8,14 +8,11 @@ import {
 } from './preferredNameStore';
 
 /**
- * The signed-in user's preferred name, loaded once per user and shared by every
- * screen that calls this hook.
- *
- * `isLoading` is true only while nothing is known yet; a locally cached name is
- * returned immediately while the server copy is confirmed in the background.
+ * The signed-in user's preferred name, shared by every screen that calls this
+ * hook. It is saved on this device, so it is available immediately.
  */
 export function usePreferredName() {
-  const userId = useSelector((s) => s.user.user?.userId ?? null);
+  const userId = LOCAL_ACCOUNT;
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
 
   useEffect(() => {

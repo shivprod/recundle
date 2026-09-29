@@ -1,11 +1,20 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import ThemeToggle from '@/components/ThemeToggle';
 import StartupSplash from '@/components/StartupSplash';
-import { useAuth } from '@/layouts/RootLayout';
 import { RecundleLogo } from '@/components/RecundleLogo';
+import { useGmail } from '@/gmail';
+import { LOCAL_ACCOUNT } from '@/gmail/useGmail';
+import { clearPreferredName } from '@/personalization';
 
-export default function PublicLayout() {
-  const { logout } = useAuth();
+export default function OwnerLayout() {
+  const navigate = useNavigate();
+  const { isConnected, disconnect } = useGmail();
+
+  const signOut = async () => {
+    await disconnect();
+    clearPreferredName(LOCAL_ACCOUNT);
+    navigate('/', { replace: true });
+  };
 
   return (
     <div className="min-h-svh bg-background">
@@ -14,13 +23,15 @@ export default function PublicLayout() {
           <RecundleLogo size="sm" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-lg px-2 py-1.5 text-[15px] font-medium text-primary hover:bg-accent"
-            >
-              Sign out
-            </button>
+            {isConnected && (
+              <button
+                type="button"
+                onClick={signOut}
+                className="rounded-lg px-2 py-1.5 text-[15px] font-medium text-primary hover:bg-accent"
+              >
+                Sign out
+              </button>
+            )}
           </div>
         </div>
       </header>
