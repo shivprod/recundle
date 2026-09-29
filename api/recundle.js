@@ -267,15 +267,26 @@ async function accessToken(s) {
   const secret = await getSecret("GOOGLE_WEB_CLIENT_SECRET");
   return (await tokenCall({ refresh_token: s.rt, client_id: CLIENT_ID, client_secret: secret, grant_type: "refresh_token" })).access_token;
 }
+// Gmail allows about 50 message reads per second per user; pace well below it.
+var GMAIL_MIN_GAP_MS = 50;
+var gmailNextSlot = 0;
+async function gmailSlot() {
+  const now = Date.now();
+  const wait = Math.max(0, gmailNextSlot - now);
+  gmailNextSlot = Math.max(now, gmailNextSlot) + GMAIL_MIN_GAP_MS;
+  if (wait) await sleep(wait);
+}
 async function gmail(path, token) {
   for (let attempt = 1; ; attempt++) {
+    await gmailSlot();
     const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) return res.json();
     const err = (await res.json().catch(() => ({})))?.error;
     const reason = err?.errors?.[0]?.reason ?? err?.status ?? "";
-    const limited = res.status === 429 || res.status === 403 && /rateLimit|RESOURCE_EXHAUSTED/.test(reason);
-    if (limited && attempt < 3) {
-      await sleep(1500 * attempt);
+    const limited = res.status === 429 || res.status === 403 && /ratelimit|resource_exhausted|quota/i.test(reason);
+    if (limited && attempt < 5) {
+      const retryAfter = Number(res.headers.get("retry-after"));
+      await sleep(retryAfter > 0 ? Math.min(retryAfter, 10) * 1e3 : 1e3 * 2 ** (attempt - 1));
       continue;
     }
     if (limited) throw new HttpError(429, "Gmail is rate-limiting requests right now. Wait a minute and sync again.", { error: "rate_limited" });

@@ -125,7 +125,16 @@ async function runSync(userId) {
 
     let pages = 0;
     while (alive() && !state.sync.backfillComplete && state.sync.backfillBefore && pages < MAX_BACKFILL_PAGES) {
-      const { res, events } = await fetchPage(userId, { before: state.sync.backfillBefore });
+      let page;
+      try {
+        page = await fetchPage(userId, { before: state.sync.backfillBefore });
+      } catch (err) {
+        // Older receipts are a bonus: if Gmail rate-limits, stop here and
+        // continue from the same point on the next sync.
+        if (err instanceof GmailApiError && err.code === 'rate_limited') break;
+        throw err;
+      }
+      const { res, events } = page;
       pages += 1;
       setSync(userId, {
         events,
