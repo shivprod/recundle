@@ -1,7 +1,11 @@
 // Recundle backend (Vercel function): Google sign-in with read-only Gmail access,
 // sealed sessions, and receipt parsing. Ported from the Apper edge function;
 // the only secret is GOOGLE_WEB_CLIENT_SECRET (a Vercel environment variable).
-const getSecret = async (name) => process.env[name];
+const getSecret = async (name) => {
+  const value = process.env[name]?.trim();
+  if (!value) throw new HttpError(503, `Recundle isn't configured yet: add ${name} in the Vercel project's environment variables, then redeploy.`, { error: "not_configured" });
+  return value;
+};
 
 // src/domain/dates.ts
 var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
