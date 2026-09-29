@@ -1,0 +1,191 @@
+/*
+ * Hero "renewal clock". Everything is sized in container units (cqw), so the
+ * dial scales with its box. The ring sits at radius 43cqw; the hand's angle is
+ * driven from JS (RenewalOrbit.jsx).
+ */
+.orbit {
+  position: relative;
+  width: 100%;
+  max-width: var(--orbit-max, 460px);
+  aspect-ratio: 1;
+  margin-inline: auto;
+  container-type: inline-size;
+}
+
+.orbit__glow {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in oklab, var(--primary) 22%, transparent), transparent 70%);
+  filter: blur(18px);
+  animation: orbit-breathe 6s ease-in-out infinite;
+}
+.orbit.is-syncing .orbit__glow { animation-duration: 1.6s; }
+
+.orbit__ring {
+  position: absolute;
+  inset: 7%;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: color-mix(in oklab, var(--card) 55%, transparent);
+}
+
+.orbit__tick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 1.4cqw;
+  margin-left: -0.5px;
+  background: var(--muted-foreground);
+  opacity: 0.3;
+  transform-origin: 0 0;
+  transform: rotate(var(--a)) translateY(-43cqw);
+}
+.orbit__tick--major { width: 2px; height: 2.6cqw; opacity: 0.55; }
+
+.orbit__day {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--a)) translateY(-35cqw);
+}
+.orbit__day > span {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(var(--a));
+  font-size: max(2.6cqw, 10px);
+  font-weight: 600;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit__inner {
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in oklab, var(--primary) 35%, transparent);
+  animation: orbit-spin 60s linear infinite reverse;
+}
+.orbit.is-syncing .orbit__inner { animation-duration: 6s; }
+
+.orbit__hand {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.orbit__sweep {
+  position: absolute;
+  inset: 7%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 290deg,
+    color-mix(in oklab, var(--primary) 4%, transparent) 300deg,
+    color-mix(in oklab, var(--primary) 30%, transparent) 360deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 36%, #000 37%);
+  mask: radial-gradient(circle, transparent 36%, #000 37%);
+}
+.orbit__needle {
+  position: absolute;
+  left: 50%;
+  top: 7%;
+  width: 2px;
+  height: 43cqw;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, var(--primary), transparent 80%);
+}
+.orbit__needle::before {
+  content: '';
+  position: absolute;
+  top: -1.3cqw;
+  left: 50%;
+  width: 2.6cqw;
+  height: 2.6cqw;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1cqw color-mix(in oklab, var(--primary) 22%, transparent);
+  transform: translateX(-50%);
+}
+
+.orbit__sat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%) translate(var(--x), var(--y));
+  opacity: 0.55;
+  filter: saturate(0.35);
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+.orbit__sat.is-passed { opacity: 1; filter: none; }
+.orbit__icon {
+  width: 10.5cqw !important;
+  height: 10.5cqw !important;
+  border-radius: 26% !important;
+  box-shadow: 0 8px 20px -10px oklch(0.25 0.02 190 / 0.5);
+}
+.orbit__ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 30%;
+  border: 2px solid var(--primary);
+  pointer-events: none;
+  animation: orbit-ripple 0.9s ease-out forwards;
+}
+
+.orbit__core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  display: flex;
+  width: 44cqw;
+  aspect-ratio: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 50px -24px oklch(0.25 0.02 190 / 0.45);
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.orbit__total {
+  margin-top: 1.2cqw;
+  overflow: hidden;
+  font-size: max(7.4cqw, 22px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.orbit__total > span { display: inline-block; }
+.orbit__label {
+  font-size: max(2.8cqw, 11px);
+  color: var(--muted-foreground);
+}
+.orbit__now {
+  display: flex;
+  min-height: max(4.6cqw, 17px);
+  max-width: 36cqw;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.4cqw;
+  font-size: max(2.6cqw, 10.5px);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--primary);
+}
+
+@keyframes orbit-spin { to { transform: rotate(360deg); } }
+@keyframes orbit-breathe { 50% { opacity: 0.6; transform: scale(0.94); } }
+@keyframes orbit-ripple { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.9); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit__glow, .orbit__inner { animation: none; }
+}

@@ -10,13 +10,15 @@ It runs on Vercel: a React site plus one serverless function. It doesn't use App
 
 1. **Landing page and sign-in** (`/`). It covers the hero, a receipt-to-subscription demo, how it works, the supported services, privacy promises, an FAQ and a closing call to action.
    - **Continue with Google** asks for the profile and read-only Gmail access (`gmail.readonly`) in one step.
-   - While the first page of receipts is read, the floating service logos (`SyncShowcase`) gather into the Recundle mark. The visitor then goes to the dashboard.
+   - The hero is a "renewal clock" (`RenewalOrbit`): a month dial with each subscription on its renewal day. A hand sweeps round, and each renewal pulses as it passes while the month's total counts up. It speeds up while the first page of receipts is read. The visitor then goes to the dashboard.
    - Signed-in visitors see the same page with **Open dashboard**. They're only redirected automatically right after a fresh sign-in.
 2. **Dashboard** (`/dashboard`). This is a wide, responsive layout that also works on phones:
    - Stat tiles for monthly spend, yearly projection, subscriptions, renewals this week and free trials. The count tiles filter the list.
    - A searchable, filterable and sortable subscription list. Each row opens a detail panel with price, monthly and yearly cost, next renewal, last paid, payment method and payment history.
    - "Where it goes" (monthly cost per subscription), the next 30 days of renewals, and an account and sync card.
 3. **Sign out** revokes Google access and removes the session, receipts and name from the device.
+
+Other landing motion (`src/components/landing/Motifs.jsx`): a drifting backdrop behind the hero, a scan line reading the demo receipt, a stepper track in How it works, a Gmail permissions card, cycling renewal reminders beside the FAQ, and radar rings behind the closing call to action.
 
 The header logo always links to `/`. Motion uses framer-motion and respects the "reduce motion" setting. Light, dark and system themes are supported.
 

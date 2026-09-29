@@ -16,3 +16,127 @@
   .landing-marquee { mask-image: none; }
   .landing-marquee__dup { display: none !important; }
 }
+
+/* ── Hero backdrop ─────────────────────────────────────────────────────── */
+.motif-dots {
+  background-image: radial-gradient(color-mix(in oklab, var(--primary) 22%, transparent) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(70% 60% at 70% 40%, #000, transparent 75%);
+  mask-image: radial-gradient(70% 60% at 70% 40%, #000, transparent 75%);
+  opacity: 0.55;
+}
+.motif-blob {
+  position: absolute;
+  width: 34rem;
+  height: 34rem;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+}
+.motif-blob--a {
+  top: -8rem;
+  right: 4%;
+  background: color-mix(in oklab, var(--primary) 30%, transparent);
+  animation: motif-drift-a 22s ease-in-out infinite alternate;
+}
+.motif-blob--b {
+  bottom: -14rem;
+  left: -6rem;
+  background: color-mix(in oklab, #94CDCA 45%, transparent);
+  animation: motif-drift-b 26s ease-in-out infinite alternate;
+}
+@keyframes motif-drift-a { to { transform: translate(-7rem, 5rem) scale(1.12); } }
+@keyframes motif-drift-b { to { transform: translate(9rem, -4rem) scale(0.9); } }
+
+/* ── Small pulse ring (permissions shield) ─────────────────────────────── */
+.motif-pulse { animation: motif-pulse 2.4s ease-out infinite; }
+@keyframes motif-pulse {
+  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent); }
+  to { box-shadow: 0 0 0 12px transparent; }
+}
+
+/* ── Demo: scan line reading the receipt ───────────────────────────────── */
+.motif-scan { position: relative; overflow: hidden; }
+.motif-scan::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3.5rem;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--primary) 14%, transparent) 70%, color-mix(in oklab, var(--primary) 55%, transparent) 72%, transparent 74%);
+  animation: motif-scan 4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes motif-scan {
+  0% { transform: translateY(-3.5rem); }
+  70%, 100% { transform: translateY(24rem); }
+}
+.motif-scan-row { border-radius: 8px; animation: motif-row 4s ease-in-out infinite; }
+@keyframes motif-row {
+  0%, 100% { background: transparent; }
+  8% { background: color-mix(in oklab, var(--primary) 12%, transparent); }
+  22% { background: transparent; }
+}
+
+/* ── How it works: stepper track ───────────────────────────────────────── */
+.motif-traveller { animation: motif-travel 5s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+@keyframes motif-travel {
+  0% { left: 0%; opacity: 0; }
+  8% { opacity: 1; }
+  45%, 55% { left: 50%; }
+  92% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+/* ── Closing: radar rings + slow orbit ─────────────────────────────────── */
+.motif-radar {
+  position: relative;
+  width: min(100vw, 46rem);
+  aspect-ratio: 1;
+  container-type: inline-size;
+}
+.motif-radar__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent);
+  animation: motif-ring 4.8s ease-out infinite;
+  opacity: 0;
+}
+@keyframes motif-ring {
+  from { transform: scale(0.3); opacity: 0.8; }
+  to { transform: scale(1); opacity: 0; }
+}
+.motif-radar__orbit {
+  position: absolute;
+  inset: 0;
+  animation: motif-spin 50s linear infinite;
+}
+.motif-radar__sat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--a)) translateY(-41cqw);
+}
+.motif-radar__counter {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  animation: motif-counter 50s linear infinite;
+}
+@keyframes motif-spin { to { transform: rotate(360deg); } }
+@keyframes motif-counter {
+  from { transform: translate(-50%, -50%) rotate(calc(var(--a) * -1)); }
+  to { transform: translate(-50%, -50%) rotate(calc(var(--a) * -1 - 360deg)); }
+}
+@media (max-width: 640px) {
+  .motif-radar__orbit { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motif-blob, .motif-pulse, .motif-scan::after, .motif-scan-row, .motif-traveller,
+  .motif-radar__ring, .motif-radar__orbit, .motif-radar__counter { animation: none; }
+  .motif-scan::after, .motif-traveller { display: none; }
+  .motif-radar__ring:first-child { opacity: 0.5; transform: scale(0.7); }
+}

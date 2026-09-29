@@ -5,7 +5,7 @@ import { GENERIC_AUTH } from '@/config/app.config';
 import ApperIcon from '@/components/ApperIcon';
 import GoogleG from '@/components/GoogleG';
 import SiteHeader from '@/components/SiteHeader';
-import SyncShowcase from '@/components/SyncShowcase';
+import RenewalOrbit from '@/components/RenewalOrbit';
 import { Button } from '@/components/ui/button';
 import {
   ClosingSection,
@@ -16,6 +16,7 @@ import {
   PrivacySection,
   ServicesStrip,
 } from '@/components/landing/LandingSections';
+import { HeroBackdrop } from '@/components/landing/Motifs';
 import { usePreferredName } from '@/personalization';
 import { useGmail } from '@/gmail';
 
@@ -131,10 +132,7 @@ export default function Welcome() {
       <main>
         {/* Hero */}
         <section className="relative overflow-hidden">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[36rem] bg-[radial-gradient(60%_60%_at_75%_30%,var(--secondary),transparent_70%)]"
-          />
+          <HeroBackdrop />
           <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[1.05fr_1fr] lg:pb-28">
             <div className="min-w-0">
               <motion.p
@@ -212,7 +210,7 @@ export default function Welcome() {
               transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="min-w-0"
             >
-              <SyncShowcase syncing={syncing} className="[--sync-stage-max:480px]" />
+              <RenewalOrbit syncing={syncing} className="[--orbit-max:500px]" />
             </motion.div>
           </div>
         </section>

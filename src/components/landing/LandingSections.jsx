@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import Reveal from './Reveal';
+import { PermissionsCard, RadarBackdrop, ReminderStack } from './Motifs';
 
 function SectionHeading({ kicker, title, children, id }) {
   return (
@@ -41,7 +42,7 @@ export function DemoSection() {
         </SectionHeading>
 
         <div className="mt-12 grid items-center gap-6 lg:grid-cols-[1fr_auto_1fr]">
-          <Reveal className="rounded-3xl bg-card p-6 shadow-[var(--shadow-md)]">
+          <Reveal className="motif-scan rounded-3xl bg-card p-6 shadow-[var(--shadow-md)]">
             <div className="flex items-center gap-3">
               <ServiceIcon name="Spotify" />
               <div className="min-w-0">
@@ -56,8 +57,8 @@ export function DemoSection() {
                 ['Amount', '₹139.00'],
                 ['Billed', 'Monthly'],
                 ['Next payment', '2 Oct'],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4 py-2">
+              ].map(([k, v], i) => (
+                <div key={k} className="motif-scan-row -mx-2 flex justify-between gap-4 px-2 py-2" style={{ animationDelay: `${0.9 + i * 0.45}s` }}>
                   <dt className="text-muted-foreground">{k}</dt>
                   <dd className="font-semibold tabular-nums">{v}</dd>
                 </div>
@@ -125,11 +126,40 @@ export function HowItWorksSection() {
     <section id="how" aria-labelledby="how-h" className="border-t border-[var(--hairline)] py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <SectionHeading id="how-h" kicker="How it works" title="Set up in under a minute" />
-        <ol className="mt-12 grid gap-4 md:grid-cols-3">
+        <motion.div
+          aria-hidden="true"
+          className="relative mt-12 hidden grid-cols-3 md:grid"
+          initial="hidden"
+          whileInView="shown"
+          viewport={{ once: true }}
+        >
+          <div className="absolute left-[16.67%] right-[16.67%] top-1/2 h-0.5 -translate-y-1/2 overflow-hidden rounded-full bg-muted">
+            <motion.div
+              className="h-full origin-left bg-primary/60"
+              variants={{ hidden: { scaleX: 0 }, shown: { scaleX: 1 } }}
+              transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
+          <div className="pointer-events-none absolute left-[16.67%] right-[16.67%] top-1/2 -translate-y-1/2">
+            <span className="motif-traveller absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_0_5px_color-mix(in_oklab,var(--primary)_20%,transparent)]" />
+          </div>
+          {STEPS.map((step, i) => (
+            <div key={step.title} className="flex justify-center">
+              <motion.span
+                variants={{ hidden: { scale: 0.6, opacity: 0 }, shown: { scale: 1, opacity: 1 } }}
+                transition={{ delay: 0.2 + i * 0.4, type: 'spring', stiffness: 300, damping: 18 }}
+                className="relative z-10 flex size-11 items-center justify-center rounded-full bg-card text-[16px] font-bold text-primary shadow-[var(--shadow-sm)] ring-4 ring-background"
+              >
+                {i + 1}
+              </motion.span>
+            </div>
+          ))}
+        </motion.div>
+        <ol className="mt-6 grid gap-4 md:grid-cols-3">
           {STEPS.map((step, i) => (
             <Reveal as="li" key={step.title} delay={i * 0.08} className="group relative rounded-3xl bg-card p-6 transition-shadow hover:shadow-[var(--shadow-lg)]">
               <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-secondary text-[15px] font-bold text-primary">
+                <span className="flex size-10 items-center justify-center rounded-full bg-secondary text-[15px] font-bold text-primary md:hidden">
                   {i + 1}
                 </span>
                 <ApperIcon name={step.icon} size={22} className="text-primary transition-transform group-hover:scale-110" />
@@ -194,9 +224,12 @@ export function PrivacySection() {
   return (
     <section id="privacy" aria-labelledby="privacy-h" className="border-t border-[var(--hairline)] py-20 sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.2fr]">
-        <SectionHeading id="privacy-h" kicker="Your inbox stays yours" title="Read-only, receipts only">
-          Recundle needs your email to find receipts. It uses that access for nothing else.
-        </SectionHeading>
+        <div>
+          <SectionHeading id="privacy-h" kicker="Your inbox stays yours" title="Read-only, receipts only">
+            Recundle needs your email to find receipts. It uses that access for nothing else.
+          </SectionHeading>
+          <PermissionsCard />
+        </div>
         <ul className="grid gap-4 sm:grid-cols-2">
           {PROMISES.map((p, i) => (
             <Reveal as="li" key={p.title} delay={i * 0.06} className="rounded-3xl bg-card p-5">
@@ -242,7 +275,12 @@ export function FaqSection() {
   return (
     <section id="faq" aria-labelledby="faq-h" className="border-t border-[var(--hairline)] py-20 sm:py-24">
       <div className="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.2fr]">
-        <SectionHeading id="faq-h" kicker="Questions" title="Frequently asked" />
+        <div>
+          <SectionHeading id="faq-h" kicker="Questions" title="Frequently asked">
+            Everything about what Recundle reads, where your data lives, and how reminders work.
+          </SectionHeading>
+          <ReminderStack className="hidden lg:block" />
+        </div>
         <Reveal>
           <Accordion type="single" collapsible className="rounded-3xl bg-card px-5">
             {FAQ.map((item, i) => (
@@ -262,8 +300,9 @@ export function FaqSection() {
 
 export function ClosingSection({ cta }) {
   return (
-    <section aria-labelledby="closing-h" className="border-t border-[var(--hairline)] py-24">
-      <Reveal className="mx-auto flex max-w-3xl flex-col items-center px-4 text-center">
+    <section aria-labelledby="closing-h" className="relative overflow-hidden border-t border-[var(--hairline)] py-32 sm:py-40">
+      <RadarBackdrop />
+      <Reveal className="relative mx-auto flex max-w-3xl flex-col items-center px-4 text-center">
         <h2 id="closing-h" className="text-[40px] font-bold leading-[1.05] tracking-tight sm:text-[56px]">
           Track. Bundle. <span className="text-primary">Recundle.</span>
         </h2>
