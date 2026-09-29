@@ -10,7 +10,7 @@ import { requestGmailCode } from './googleCodeClient';
  * shared database.
  */
 
-// Background backfill stops after this many pages (60 emails each).
+// Background backfill stops after this many pages (30 emails each).
 const MAX_BACKFILL_PAGES = 10;
 const SIGNED_OUT_CODES = new Set(['signed_out', 'consent_revoked', 'gmail_not_granted']);
 

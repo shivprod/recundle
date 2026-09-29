@@ -26,7 +26,7 @@ There are no Recundle accounts or passwords, and no database. The Google sign-in
   - It needs one environment variable, `GOOGLE_WEB_CLIENT_SECRET`. The same value also keys the sealed sessions, so changing it signs everyone out.
 - **`src/gmail/`**:
   - `googleCodeClient.js`: the Google Identity Services popup.
-  - `gmailStore.js`: the session, receipt sync, and background backfill of up to 10 pages of 60 emails.
+  - `gmailStore.js`: the session, receipt sync, and background backfill of up to 10 pages of 30 emails.
   - `useGmail.js`: the React hook.
   - `subscriptions.js`: turns receipts into subscriptions.
 - **`src/personalization/`**: the preferred name (Google first name by default) and greeting helpers.

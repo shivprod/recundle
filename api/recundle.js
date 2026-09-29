@@ -210,7 +210,7 @@ var RECEIPT_SENDER_DOMAINS = [
 var CLIENT_ID = "86235899973-st5it9v5gaajo3q2qv0jt84n2i7ar2jt.apps.googleusercontent.com";
 var GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 var TIMEZONE = "Asia/Kolkata";
-var BATCH = 60;
+var BATCH = 30;
 var CONCURRENCY = 2;
 var HttpError = class extends Error {
   constructor(status, message, extra = {}) {
@@ -304,7 +304,9 @@ async function gmail(path, token) {
     console.warn(`[gmail] ${res.status} ${reason} attempt=${attempt}: ${String(err?.message ?? "").slice(0, 200)}`);
     const limited = res.status === 429 || res.status === 403 && /ratelimit|resource_exhausted|quota/i.test(reason);
     if (limited) {
-      const retryAt = retryAtFrom(res, err);
+      // A per-minute quota only refills with the next minute; retrying sooner just spends it.
+      const perMinute = /per minute/i.test(err?.message ?? "");
+      const retryAt = retryAtFrom(res, err) ?? (perMinute ? Date.now() + 61e3 : null);
       const waitMs = retryAt ? retryAt - Date.now() : 1e3 * 2 ** (attempt - 1);
       if (attempt < 4 && waitMs <= 8e3) {
         await sleep(Math.max(waitMs, 500));
