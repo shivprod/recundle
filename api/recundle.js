@@ -207,7 +207,7 @@ var RECEIPT_SENDER_DOMAINS = [
   "airtel.in"
 ];
 
-var CLIENT_ID = "86235899973-st5it9v5gaajo3q2qv0jt84n2i7ar2jt.apps.googleusercontent.com";
+var CLIENT_ID = "286940691052-ss6b2j3m1hfp69678ce04oburpmjunuf.apps.googleusercontent.com";
 var GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 var TIMEZONE = "Asia/Kolkata";
 var BATCH = 30;
