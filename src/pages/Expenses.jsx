@@ -87,7 +87,8 @@ export default function Expenses() {
                     : `The "Phone Pe - Monthly Statement" folder has ${drive.files ?? 0} PDF${drive.files === 1 ? '' : 's'}, but no transactions could be read from them. Check Settings → PhonePe statements; locked PDFs need the statement password.`}
           </Empty>
           <div className="flex flex-wrap justify-center gap-2 pb-4">
-            {!session.access?.drive ? <Button icon="FolderOpen" onClick={() => signIn().catch((e) => e.code !== 'popup_closed' && toast.error(e.message))}>Allow Google Drive</Button> : !drive.running && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Drive</Button>}
+            {!session.access?.drive || drive.code === 'scope_missing' ? <Button icon="FolderOpen" onClick={() => signIn().then(() => syncNow()).catch((e) => e.code !== 'popup_closed' && toast.error(e.message))}>Allow Google Drive</Button> : !drive.running && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Drive</Button>}
+            {drive.enableUrl && <a href={drive.enableUrl} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded border border-line px-4 text-[14px] font-medium hover:border-ink"><Icon name="ExternalLink" size={16} /> Open Google Cloud</a>}
             <Button variant="outline" icon="FileUp" onClick={() => setImporting(true)}>Add statement PDF</Button>
           </div>
         </Card>

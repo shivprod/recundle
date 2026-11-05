@@ -69,17 +69,27 @@ export async function googleFetch(session, url, init = {}) {
   if (res.ok) return res;
   const text = await res.text();
   if (res.status === 401) throw new HttpError(401, 'reconnect', 'Google access ended. Sign in again.');
-  if (res.status === 429 || (res.status === 403 && /rateLimitExceeded|userRateLimitExceeded|quota/i.test(text))) {
+  // Google's own explanation (no personal data), shown so problems can be fixed rather than guessed.
+  let reason = '';
+  try {
+    reason = String(JSON.parse(text)?.error?.message ?? '').slice(0, 300);
+  } catch {
+    /* not JSON */
+  }
+  // Checked first: a disabled API is also reported as PERMISSION_DENIED.
+  if (res.status === 403 && /accessNotConfigured|SERVICE_DISABLED|has not been used|is disabled|it is disabled/i.test(text)) {
+    const api = /drive/i.test(url) ? { name: 'Google Drive API', id: 'drive.googleapis.com' } : { name: 'Google API', id: '' };
+    throw new HttpError(503, 'api_disabled', `The ${api.name} is turned off for Recundle's Google Cloud project. Turn it on in Google Cloud Console (APIs & Services → Library → ${api.name} → Enable), wait a few minutes and sync again.`, { enableUrl: api.id ? `https://console.cloud.google.com/apis/library/${api.id}?project=286940691052` : null });
+  }
+  if (res.status === 429 || (res.status === 403 && /rateLimitExceeded|userRateLimitExceeded|RATE_LIMIT_EXCEEDED/i.test(text))) {
     const retryAfter = Number(res.headers.get('retry-after')) || 30;
     throw new HttpError(429, 'rate_limited', 'Google asked us to slow down. Syncing will continue shortly.', { retryAfter });
   }
-  if (res.status === 403 && /insufficient|scope|PERMISSION_DENIED/i.test(text)) {
-    throw new HttpError(403, 'scope_missing', 'Recundle does not have permission for this. Sign in again and allow access.');
+  if (res.status === 403 && /insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient authentication scopes/i.test(text)) {
+    throw new HttpError(403, 'scope_missing', 'Google Drive access was not granted. Sign in again and tick "See and download all your Google Drive files".');
   }
-  if (res.status === 403 && /accessNotConfigured|has not been used|disabled/i.test(text)) {
-    throw new HttpError(503, 'api_disabled', 'This Google API is not enabled for the Recundle Google Cloud project.');
-  }
-  throw new HttpError(502, 'google_error', `Google API error ${res.status}.`);
+  if (res.status === 403 || res.status === 404) throw new HttpError(res.status, 'google_denied', `Google said: ${reason || `error ${res.status}`}`);
+  throw new HttpError(502, 'google_error', `Google API error ${res.status}${reason ? `: ${reason}` : ''}.`);
 }
 
 export async function revoke(session) {

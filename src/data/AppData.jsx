@@ -181,7 +181,7 @@ export function AppDataProvider({ children }) {
         setDrive((d) => ({ ...d, running: false, checkedAt: Date.now() }));
         return { files: files.length, read };
       } catch (err) {
-        setDrive((d) => ({ ...d, running: false, error: err.message, code: err.code }));
+        setDrive((d) => ({ ...d, running: false, error: err.message, code: err.code, enableUrl: err.body?.enableUrl ?? null }));
         if (err.code === 'reconnect' || err.code === 'signed_out') setSession((x) => ({ ...x, needsReconnect: true }));
         return null;
       } finally {
