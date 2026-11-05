@@ -1,0 +1,35 @@
+{
+  "name": "recundle",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Recundle — Track. Bundle. Recundle. Expenses, subscriptions, loans and to-dos in one place.",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
+    "@fontsource-variable/google-sans": "^5.3.2",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.43.0",
+    "lucide-react": "^1.68.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
+    "recharts": "^2.15.4",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.3.4",
+    "vite": "^7.3.7"
+  }
+}

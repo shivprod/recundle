@@ -1,0 +1,179 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/google-sans';
+
+/* Recundle brand: Primary Teal #4DAAA7, Secondary Teal #3F8F8B, Charcoal #333333, Google Sans.
+   Light-mode buttons use #357A77 so white text stays readable (5:1). */
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-2: #eef2f1;
+  --ink: #333333;
+  --ink-2: #5b6461;
+  --ink-3: #7c8582;
+  --line: #e1e7e5;
+  --primary: #357a77;
+  --primary-ink: #ffffff;
+  --primary-soft: #e3f1f0;
+  --brand: #4daaa7;
+  --brand-2: #3f8f8b;
+  --good: #1f7a4d;
+  --good-soft: #e3f3ea;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --bad: #b42318;
+  --bad-soft: #fde8e6;
+  --info: #2a6fb8;
+  --info-soft: #e5effa;
+  /* Charts (validated for colour-vision deficiency) */
+  --viz-in: #0f918a;
+  --viz-out: #eb6834;
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
+  --viz-other: #a3aaa7;
+  --viz-grid: #e6eae9;
+  --shadow: 0 1px 2px rgb(16 24 22 / 0.05), 0 4px 16px rgb(16 24 22 / 0.04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1b1d1c;
+    --surface: #242726;
+    --surface-2: #2d3130;
+    --ink: #eef1f0;
+    --ink-2: #b9c1be;
+    --ink-3: #8f9895;
+    --line: #363a39;
+    --primary: #4daaa7;
+    --primary-ink: #0f1f1e;
+    --primary-soft: #1f3a39;
+    --good: #5cc490;
+    --good-soft: #1d3328;
+    --warn: #e8b04c;
+    --warn-soft: #3a2f1a;
+    --bad: #f0857a;
+    --bad-soft: #3d2220;
+    --info: #7fb2ec;
+    --info-soft: #1e2b3b;
+    --viz-in: #1aa59d;
+    --viz-out: #d95926;
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-4: #c98500;
+    --viz-5: #d55181;
+    --viz-other: #6d7572;
+    --viz-grid: #343837;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #1b1d1c;
+  --surface: #242726;
+  --surface-2: #2d3130;
+  --ink: #eef1f0;
+  --ink-2: #b9c1be;
+  --ink-3: #8f9895;
+  --line: #363a39;
+  --primary: #4daaa7;
+  --primary-ink: #0f1f1e;
+  --primary-soft: #1f3a39;
+  --good: #5cc490;
+  --good-soft: #1d3328;
+  --warn: #e8b04c;
+  --warn-soft: #3a2f1a;
+  --bad: #f0857a;
+  --bad-soft: #3d2220;
+  --info: #7fb2ec;
+  --info-soft: #1e2b3b;
+  --viz-in: #1aa59d;
+  --viz-out: #d95926;
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  --viz-other: #6d7572;
+  --viz-grid: #343837;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Google Sans Variable', 'Google Sans', system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-brand: var(--brand);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  min-height: 100svh;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* Flashcards */
+.flip-scene {
+  perspective: 1200px;
+}
+.flip-inner {
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner {
+    transition: none;
+  }
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  scrollbar-width: none;
+}
