@@ -164,11 +164,9 @@ api/            Vercel functions (Web Request → Response)
   auth.js       Google code → sealed cookie
   logout.js     sign out / revoke
   gmail.js      one page of the Gmail scan (the browser pages through)
-  data.js       read / write / delete the Drive data file (conflict-safe)
 server/
   session.js    AES-GCM cookie sealing
   google.js     token refresh, Google API errors → app errors
-  drive.js      Drive appDataFolder storage with version checks
   gmail.js      list + fetch + parse
   ai.js         optional Claude extraction for loan emails
   parse/        bank alerts, receipts & subscriptions, loans & NOCs, text helpers, lender list
@@ -176,13 +174,13 @@ src/
   core/         pure logic, unit-tested: store & merge, categories & built-in guesses,
                 transactions (rules, duplicates), analytics, subscriptions, loans
                 (amortisation, estimates, NOC matching, strategies), CSV statements
-  data/         AppData provider: session, Drive sync, Gmail scan, actions
+  data/         AppData provider: session, on-device storage (IndexedDB), resumable Gmail scan, actions
   components/   UI kit, charts (Recharts), expenses components, app shell
   pages/        Landing, Dashboard, Expenses, Subscriptions, Loans, Todos, Settings
 test/           node:test suites (all data made up)
 ```
 
-**Stack:** React 19 with Vite, Tailwind CSS 4, framer-motion, Recharts and lucide icons, with Vercel Node functions on the server. There is no database: storage is the user's Google Drive app folder.
+**Stack:** React 19 with Vite, Tailwind CSS 4, framer-motion, Recharts and lucide icons, with Vercel Node functions on the server. There is no server database: data is stored in the user's browser.
 
 **Palette:** Quantus 2025: Electric Violet `#834DFB`, Turbo `#F0E100`, Haiti `#18102B` and Blue Chalk `#F5F3FF`, used for the logo and favicon too. Chart colours are derived from it and validated for colour-blind readers.
 
