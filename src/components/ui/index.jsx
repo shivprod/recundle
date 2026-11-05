@@ -11,7 +11,7 @@ export function Icon({ name, size = 18, className, ...props }) {
 
 const BUTTON = {
   primary: 'bg-primary text-primary-ink hover:brightness-110',
-  secondary: 'bg-primary-soft text-primary hover:brightness-95',
+  secondary: 'border border-line bg-surface text-ink hover:border-ink/30',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   outline: 'border border-line bg-surface text-ink hover:bg-surface-2',
   danger: 'bg-bad text-white hover:brightness-110',
@@ -49,8 +49,8 @@ export function CardHead({ title, subtitle, action, icon }) {
   return (
     <div className="mb-4 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-tight">
-          {icon && <Icon name={icon} size={18} className="text-primary" />}
+        <h2 className="flex items-center gap-2 text-[17px] font-medium">
+          {icon && <Icon name={icon} size={18} className="text-ink-2" />}
           {title}
         </h2>
         {subtitle && <p className="mt-0.5 text-[13px] text-ink-3">{subtitle}</p>}
@@ -66,7 +66,7 @@ const TONES = {
   bad: 'bg-bad-soft text-bad',
   info: 'bg-info-soft text-info',
   muted: 'bg-surface-2 text-ink-2',
-  brand: 'bg-primary-soft text-primary',
+  brand: 'bg-brand-soft text-brand',
 };
 
 export function Badge({ tone = 'muted', icon, children, className }) {
@@ -85,7 +85,7 @@ export function Tile({ label, value, sub, icon, tone, onClick, emphasis, classNa
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={cn('card group flex min-w-0 flex-col p-4 text-left transition', onClick && 'cursor-pointer hover:border-primary/40 hover:shadow-md', emphasis && 'ring-1 ring-primary/25', className)}
+      className={cn('card group flex min-w-0 flex-col p-4 text-left transition', onClick && 'cursor-pointer hover:border-ink/40', emphasis && 'border-ink/30', className)}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-[12.5px] font-medium text-ink-2">{label}</span>
@@ -95,7 +95,7 @@ export function Tile({ label, value, sub, icon, tone, onClick, emphasis, classNa
           </span>
         )}
       </div>
-      <div className="tnum mt-1.5 truncate text-[22px] font-bold leading-tight tracking-tight sm:text-[24px]">{value}</div>
+      <div className="tnum mt-1.5 truncate font-display text-[23px] font-medium leading-tight tracking-tight sm:text-[26px]">{value}</div>
       {sub && <div className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-[12.5px] text-ink-3">{sub}</div>}
     </Tag>
   );
@@ -261,7 +261,7 @@ export function Dialog({ open, onClose, title, children, footer }) {
 export function Empty({ icon = 'Inbox', title, children, action, className }) {
   return (
     <div className={cn('flex flex-col items-center px-4 py-10 text-center', className)}>
-      <span className="flex size-11 items-center justify-center rounded-2xl bg-primary-soft text-primary">
+      <span className="flex size-11 items-center justify-center rounded-md border border-ink/40 text-ink">
         <Icon name={icon} size={20} />
       </span>
       <p className="mt-3 text-[15px] font-semibold">{title}</p>
@@ -311,7 +311,7 @@ export function PageHeader({ title, subtitle, actions, children }) {
   return (
     <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight sm:text-[30px]">{title}</h1>
+        <h1 className="text-[30px] font-medium leading-tight sm:text-[38px]">{title}</h1>
         {subtitle && <p className="mt-1 text-[14px] text-ink-2">{subtitle}</p>}
         {children}
       </div>

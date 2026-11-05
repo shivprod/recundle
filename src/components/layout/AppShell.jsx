@@ -100,7 +100,7 @@ export default function AppShell() {
   useEffect(() => window.scrollTo(0, 0), [pathname]);
   const reconnect = session.needsReconnect || scan.code === 'reconnect';
   return (
-    <div className="min-h-svh pb-24 lg:pb-10 lg:pl-60">
+    <div className="min-h-svh pb-20 lg:pb-0 lg:pl-60">
       {/* Sidebar (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-line bg-surface px-3 py-5 lg:flex">
         <Link to="/dashboard" className="px-2">
@@ -109,14 +109,14 @@ export default function AppShell() {
         <p className="mt-1 px-2 text-[12px] text-ink-3">Track. Bundle. Recundle.</p>
         <nav className="mt-6 flex flex-col gap-1" aria-label="Main">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] font-medium transition-colors', isActive ? 'bg-primary-soft text-primary' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')}>
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] font-medium transition-colors', isActive ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')}>
               <Icon name={n.icon} size={18} />
               {n.label}
             </NavLink>
           ))}
         </nav>
         <div className="mt-auto">
-          <NavLink to="/settings" className={({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium', isActive ? 'bg-primary-soft text-primary' : 'text-ink-2 hover:bg-surface-2')}>
+          <NavLink to="/settings" className={({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium', isActive ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2')}>
             <Icon name="Settings" size={18} /> Settings & data
           </NavLink>
         </div>
@@ -145,7 +145,9 @@ export default function AppShell() {
         </div>
       )}
 
-      <main className="mx-auto w-full max-w-6xl px-4 pt-5 sm:px-6 sm:pt-7">
+      <main className="rails relative mx-auto min-h-[calc(100svh-3.5rem)] w-full max-w-6xl px-4 pb-10 pt-5 sm:px-8 sm:pt-8">
+        <span className="cross -left-[6px] -top-[7px] hidden sm:block" aria-hidden="true" />
+        <span className="cross -right-[6px] -top-[7px] hidden sm:block" aria-hidden="true" />
         <Outlet />
       </main>
 
@@ -153,7 +155,7 @@ export default function AppShell() {
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Main">
         <div className="mx-auto grid max-w-lg grid-cols-5">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', isActive ? 'text-primary' : 'text-ink-3')}>
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', isActive ? 'text-ink' : 'text-ink-3')}>
               <Icon name={n.icon} size={21} />
               {n.label}
             </NavLink>

@@ -1,29 +1,30 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/google-sans';
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource-variable/inter';
 
-/* Recundle brand: Primary Teal #4DAAA7, Secondary Teal #3F8F8B, Charcoal #333333, Google Sans.
-   Light-mode buttons use #357A77 so white text stays readable (5:1). */
+/* Look: the Aoutive template's monochrome, framed layout (thin rails, crosshair marks, square corners,
+   Space Grotesk headings, Inter text). Recundle teal (#4DAAA7 / #3F8F8B) stays as a small accent and in charts. */
 :root {
-  --bg: #f4f6f5;
+  --bg: #fcfcfc;
   --surface: #ffffff;
-  --surface-2: #eef2f1;
-  --ink: #333333;
-  --ink-2: #5b6461;
-  --ink-3: #7c8582;
-  --line: #e1e7e5;
-  --primary: #357a77;
+  --surface-2: #f4f4f4;
+  --ink: #1a1a1a;
+  --ink-2: #5c5c5c;
+  --ink-3: #737373;
+  --line: #e6e6e6;
+  --primary: #1a1a1a;
   --primary-ink: #ffffff;
-  --primary-soft: #e3f1f0;
-  --brand: #4daaa7;
-  --brand-2: #3f8f8b;
+  --primary-soft: #f0f0f0;
+  --brand: #3f8f8b;
+  --brand-soft: #e6f2f1;
   --good: #1f7a4d;
-  --good-soft: #e3f3ea;
+  --good-soft: #e6f4ec;
   --warn: #9a5b00;
-  --warn-soft: #fbf0dc;
+  --warn-soft: #fbf1df;
   --bad: #b42318;
-  --bad-soft: #fde8e6;
+  --bad-soft: #fdeceb;
   --info: #2a6fb8;
-  --info-soft: #e5effa;
+  --info-soft: #e8f0fa;
   /* Charts (validated for colour-vision deficiency) */
   --viz-in: #0f918a;
   --viz-out: #eb6834;
@@ -32,31 +33,33 @@
   --viz-3: #1baf7a;
   --viz-4: #eda100;
   --viz-5: #e87ba4;
-  --viz-other: #a3aaa7;
-  --viz-grid: #e6eae9;
-  --shadow: 0 1px 2px rgb(16 24 22 / 0.05), 0 4px 16px rgb(16 24 22 / 0.04);
+  --viz-other: #a3a3a3;
+  --viz-grid: #ececec;
+  --shadow: none;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #1b1d1c;
-    --surface: #242726;
-    --surface-2: #2d3130;
-    --ink: #eef1f0;
-    --ink-2: #b9c1be;
-    --ink-3: #8f9895;
-    --line: #363a39;
-    --primary: #4daaa7;
-    --primary-ink: #0f1f1e;
-    --primary-soft: #1f3a39;
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --surface-2: #212121;
+    --ink: #f2f2f2;
+    --ink-2: #b0b0b0;
+    --ink-3: #8c8c8c;
+    --line: #2a2a2a;
+    --primary: #f2f2f2;
+    --primary-ink: #111111;
+    --primary-soft: #262626;
+    --brand: #4daaa7;
+    --brand-soft: #1b3332;
     --good: #5cc490;
-    --good-soft: #1d3328;
+    --good-soft: #17291f;
     --warn: #e8b04c;
-    --warn-soft: #3a2f1a;
+    --warn-soft: #2e2615;
     --bad: #f0857a;
-    --bad-soft: #3d2220;
+    --bad-soft: #321b19;
     --info: #7fb2ec;
-    --info-soft: #1e2b3b;
+    --info-soft: #18222f;
     --viz-in: #1aa59d;
     --viz-out: #d95926;
     --viz-1: #3987e5;
@@ -64,31 +67,32 @@
     --viz-3: #199e70;
     --viz-4: #c98500;
     --viz-5: #d55181;
-    --viz-other: #6d7572;
-    --viz-grid: #343837;
-    --shadow: none;
+    --viz-other: #6b6b6b;
+    --viz-grid: #262626;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #1b1d1c;
-  --surface: #242726;
-  --surface-2: #2d3130;
-  --ink: #eef1f0;
-  --ink-2: #b9c1be;
-  --ink-3: #8f9895;
-  --line: #363a39;
-  --primary: #4daaa7;
-  --primary-ink: #0f1f1e;
-  --primary-soft: #1f3a39;
+  --bg: #0e0e0e;
+  --surface: #161616;
+  --surface-2: #212121;
+  --ink: #f2f2f2;
+  --ink-2: #b0b0b0;
+  --ink-3: #8c8c8c;
+  --line: #2a2a2a;
+  --primary: #f2f2f2;
+  --primary-ink: #111111;
+  --primary-soft: #262626;
+  --brand: #4daaa7;
+  --brand-soft: #1b3332;
   --good: #5cc490;
-  --good-soft: #1d3328;
+  --good-soft: #17291f;
   --warn: #e8b04c;
-  --warn-soft: #3a2f1a;
+  --warn-soft: #2e2615;
   --bad: #f0857a;
-  --bad-soft: #3d2220;
+  --bad-soft: #321b19;
   --info: #7fb2ec;
-  --info-soft: #1e2b3b;
+  --info-soft: #18222f;
   --viz-in: #1aa59d;
   --viz-out: #d95926;
   --viz-1: #3987e5;
@@ -96,14 +100,20 @@
   --viz-3: #199e70;
   --viz-4: #c98500;
   --viz-5: #d55181;
-  --viz-other: #6d7572;
-  --viz-grid: #343837;
-  --shadow: none;
+  --viz-other: #6b6b6b;
+  --viz-grid: #262626;
   color-scheme: dark;
 }
 
 @theme inline {
-  --font-sans: 'Google Sans Variable', 'Google Sans', system-ui, sans-serif;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', 'Inter Variable', system-ui, sans-serif;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.3125rem;
+  --radius-2xl: 0.375rem;
+  --color-brand-soft: var(--brand-soft);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -141,8 +151,66 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 1rem;
-  box-shadow: var(--shadow);
+  border-radius: 0.375rem;
+}
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+/* Template framing: vertical rails on the content column, hairline section dividers and + marks. */
+.rails {
+  position: relative;
+}
+.rails::before,
+.rails::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+.rails::before {
+  left: 0;
+}
+.rails::after {
+  right: 0;
+}
+.hairline {
+  border-top: 1px solid var(--line);
+}
+.cross {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  pointer-events: none;
+  z-index: 2;
+}
+.cross::before,
+.cross::after {
+  content: '';
+  position: absolute;
+  background: var(--ink);
+}
+.cross::before {
+  left: 6px;
+  top: 0;
+  width: 1px;
+  height: 13px;
+}
+.cross::after {
+  top: 6px;
+  left: 0;
+  height: 1px;
+  width: 13px;
+}
+.dot-grid {
+  background-image: radial-gradient(var(--line) 1px, transparent 1px);
+  background-size: 18px 18px;
 }
 :focus-visible {
   outline: 2px solid var(--primary);
@@ -176,4 +244,18 @@ body {
 }
 .scrollbar-none {
   scrollbar-width: none;
+}
+@keyframes pixel {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+/* Isometric projection for the line-drawn illustrations. */
+.iso {
+  transform: rotateX(54deg) rotateZ(-42deg);
+  transform-style: preserve-3d;
 }

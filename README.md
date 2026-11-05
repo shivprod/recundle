@@ -187,11 +187,14 @@ test/           node:test suites (all data made up)
 
 **Stack:** React 19 with Vite, Tailwind CSS 4, framer-motion, Recharts and lucide icons, with Vercel Node functions on the server. There is no database: storage is the user's Google Drive app folder.
 
-**Brand:**
-- Colours: Primary Teal `#4DAAA7`, Secondary Teal `#3F8F8B` and Charcoal `#333333`. Light-mode buttons use `#357A77` so white text stays readable.
-- Font: Google Sans.
-- Dark mode is supported.
-- Chart colours are validated for colour-vision deficiency.
+**Design:** follows the Aoutive Framer template (aoutive.framer.website):
+- Monochrome layout framed by thin rails and hairlines, with "+" marks where they cross.
+- Square-cornered black and outlined buttons.
+- Space Grotesk headings with a grey second line, and Inter for body text.
+- A pixel-mosaic hero, line-drawn isometric illustrations, and bordered stats and access grids.
+- An uppercase FAQ accordion.
+
+Recundle teal (`#4DAAA7` / `#3F8F8B`) is kept as a small accent. Chart colours are validated for colour-vision deficiency. Dark mode is supported.
 
 **Logo:** the logo mark is a placeholder; the original artwork was lost with the old repository.
 
