@@ -1,119 +1,74 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { CountUp, Icon, Spinner } from '@/components/ui';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Icon, Spinner } from '@/components/ui';
 import { RecundleLogo } from '@/components/layout/Logo';
-import { Eyebrow, Heading, Marquee, PixelMosaic, Section } from '@/components/landing/Frame';
-import { HeroSlab, IsoStack, Shapes, SourcesDiagram } from '@/components/landing/Illustrations';
+import { CircuitGrid, DriftRow, Eyebrow, GemField, MonthCountdown, RibbonArt, Title } from '@/components/landing/Grw';
 import { useApp } from '@/data/AppData';
 import { cn } from '@/lib/cn';
 
-const NAV = [
-  ['#modules', 'Modules'],
-  ['#how', 'How it works'],
-  ['#access', 'Privacy'],
-  ['#faq', 'FAQ'],
+const PILLARS = [
+  ['Expenses', 'Money in, money out, and where it goes, by category, payee and month.'],
+  ['Subscriptions', 'Every recurring payment, its renewal date, price changes and history.'],
+  ['Loans', 'What you owe, NOCs found in your inbox, and the fastest way out of debt.'],
+  ['To-Dos', 'Personal responsibilities as cards you flip and tick off. No calendars.'],
 ];
 
 const MODULES = [
-  { id: 'expenses', title: 'Expenses', text: 'Money in, money out, and where it goes, by category and payee.' },
-  { id: 'subscriptions', title: 'Subscriptions', text: 'Every recurring payment, with renewals and price changes.' },
-  { id: 'loans', title: 'Loans', text: 'What you owe, NOCs found, and the fastest way out of debt.' },
-  { id: 'todos', title: 'To-Dos', text: 'Personal responsibilities as cards you flip and tick off.' },
+  { code: 'M/01', kind: 'Expenses', title: 'Where it goes', sub: 'Cash flow · categories · payees', text: 'Income against spending each month, money flowing into categories, and the payments that add up.' },
+  { code: 'M/02', kind: 'Subscriptions', title: 'What renews', sub: 'Renewals · price changes', text: 'Found from receipts and renewal emails. Failed payments are flagged before a service stops.' },
+  { code: 'M/03', kind: 'Loans', title: 'What you owe', sub: 'Balances · NOCs · payoff plan', text: 'Lender figures, labelled estimates, closure letters matched to the right loan, and your debt-free date.' },
+  { code: 'M/04', kind: 'To-Dos', title: 'What’s pending', sub: 'Flip cards · done in a tap', text: 'Renew a passport, book a check-up, file the paperwork. A calm list of what’s still on you.' },
 ];
 
-const PRINCIPLES = [
-  ['Eye', 'Read-only Gmail', 'Recundle reads payment alerts, receipts and loan emails. It can never send, delete or change an email.'],
-  ['Smartphone', 'Stays on your device', 'Your transactions, edits, loans and to-dos are saved in your browser, not on Recundle’s servers.'],
-  ['BadgeCheck', 'Nothing invented', 'Every figure comes from an email, a statement or you. Estimates are always labelled.'],
-  ['Wand', 'Learns from you', 'Correct a payee once and choose “apply to all”. Similar names are never changed without asking.'],
-  ['CopyCheck', 'Counted once', 'A payment seen in a bank alert and a receipt is matched and counted once.'],
-  ['ShieldCheck', 'You stay in charge', 'Loans close only when you confirm the NOC. Statuses and categories are always editable.'],
-];
-
-const USE_CASES = [
-  ['ChartPie', 'Where is my money going?', 'Category trends, payments that add up, unusual spikes and possible double charges, each linked to the transactions behind it.'],
-  ['UserPen', '“Rahul Kumar” is my landlord', 'Fix a UPI transfer once and every future payment to that person is filed as rent.'],
-  ['Repeat', 'What renews next week', 'Subscriptions found from receipts and renewal emails, with failed payments flagged before a service stops.'],
-  ['FileCheck2', 'Is that loan really closed?', 'NOCs and closure letters in your inbox are matched to the right loan for you to confirm.'],
-  ['Flag', 'Debt-free sooner', 'Compare paying the costliest loan first with the smallest first, and see the date you’re debt-free.'],
-  ['ListTodo', 'Passport, check-up, paperwork', 'The personal tasks still waiting on you, as flip cards. No calendars, no due dates required.'],
-];
-
-const STATS = [
-  ['4', 'modules in one app'],
-  ['0', 'copies of your data on our servers'],
-  ['100%', 'read-only Gmail access'],
-  ['₹', 'built for Indian banks, UPI and INR'],
-];
-
-const ACCESS = [
-  {
-    title: 'Gmail',
-    tag: 'Read-only',
-    text: 'To find payment alerts, receipts, subscription and loan emails.',
-    yes: ['Searches only for financial emails', 'Reads them in memory, keeps the parsed fields', 'Links back to each source email'],
-    no: ['Never sends, deletes or changes email', 'Never stores email bodies'],
-  },
-  {
-    title: 'This device',
-    tag: 'Where data lives',
-    featured: true,
-    text: 'What Recundle finds, and everything you change, is saved in your browser.',
-    yes: ['Categories, rules and corrections', 'Loans, subscriptions and to-dos', 'Download a backup any time'],
-    no: ['Nothing kept on Recundle’s servers', 'Delete it all from Settings in one click'],
-  },
-  {
-    title: 'Your profile',
-    tag: 'Basic',
-    text: 'Your name, email and photo, to show who is signed in.',
-    yes: ['Greets you by name', 'One account per Google sign-in'],
-    no: ['No Recundle password to remember', 'No bank logins, ever'],
-  },
+const PRIVACY = [
+  ['Read-only Gmail', 'Recundle can read payment alerts, receipts and loan emails. It can never send, delete or change an email.'],
+  ['Stays on your device', 'What it finds and everything you change is saved in your browser. Recundle’s servers keep nothing.'],
+  ['Nothing invented', 'Every figure comes from an email, a statement or you. Anything calculated is labelled as an estimate.'],
 ];
 
 const FAQ = [
-  ['Do I need to share my bank password?', 'No. Recundle never asks for bank, UPI or card credentials. It reads the alerts and receipts your bank and apps already email you, and statements you choose to import.'],
-  ['Can Recundle move money or pay bills?', 'No. It is read-only: it can show and organise your finances, but it can’t make payments or change anything in your accounts or email.'],
-  ['Where is my data stored?', 'On this device, in your browser’s storage. Recundle’s servers keep nothing: emails are read, the payment details are sent back to your browser, and the email is discarded. You can download a backup or delete everything from Settings.'],
-  ['Does it work with Google Pay and PhonePe?', 'Those apps don’t let other apps read your history, so Recundle uses the UPI alerts your bank emails you. Import a bank statement (CSV) to fill any gaps.'],
-  ['What if a payment is categorised wrongly?', 'Open it and change it. Recundle asks whether to apply the change to all future payments from that payee, and remembers your choice.'],
-  ['How are loan balances worked out?', 'From your lender’s emails where they state it. Anything calculated is labelled “Estimated”, and missing figures are shown as missing, never guessed.'],
+  ['Do I share my bank password?', 'Never. Recundle reads the alerts and receipts your bank and apps already email you, and statements you choose to import.'],
+  ['Can it move money?', 'No. It is read-only: it organises your finances but can’t pay, transfer or change anything.'],
+  ['Does it work with Google Pay and PhonePe?', 'Those apps don’t let other apps read your history, so Recundle uses the UPI alerts your bank emails you. A CSV statement fills any gaps.'],
+  ['What if it gets a category wrong?', 'Change it. Recundle asks whether to apply it to future payments from that payee, and remembers.'],
 ];
 
-function GetStarted({ onClick, busy, size = 'md', children = 'Get Started', className, disabled }) {
+function Cta({ onClick, busy, disabled, children, className }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={busy || disabled}
-      className={cn('inline-flex items-center justify-center gap-2 rounded-[3px] bg-primary font-medium text-primary-ink transition hover:opacity-90 disabled:opacity-60', size === 'lg' ? 'h-11 px-6 text-[15px]' : 'h-10 px-5 text-[14px]', className)}
+      className={cn('group inline-flex h-[52px] items-center justify-center gap-3 rounded-lg bg-ink px-6 text-[15px] font-medium text-bg transition hover:bg-brand disabled:opacity-60', className)}
     >
-      {busy ? <Spinner size={16} /> : null}
+      {busy && <Spinner size={16} />}
       {children}
+      <Icon name="ArrowRight" size={18} className="transition-transform group-hover:translate-x-1" />
     </button>
   );
 }
 
-const ghostLink = 'inline-flex h-11 items-center justify-center gap-2 rounded-[3px] border border-line bg-surface px-6 text-[15px] font-medium text-ink-2 transition hover:border-ink/30 hover:text-ink';
-
 function Faq() {
-  const [open, setOpen] = useState(0);
+  const [open, setOpen] = useState(null);
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="border-t border-ink/15">
       {FAQ.map(([q, a], i) => (
-        <li key={q} className="rounded-md border border-line bg-surface">
-          <button type="button" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left">
-            <span className="font-display text-[15px] font-medium uppercase tracking-[0.01em] sm:text-[16px]">{q}</span>
-            <motion.span animate={{ rotate: open === i ? 45 : 0 }} className="shrink-0">
-              <Icon name="Plus" size={22} />
+        <li key={q} className="border-b border-ink/15">
+          <button type="button" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className="flex w-full items-center justify-between gap-6 py-6 text-left">
+            <span className="flex items-baseline gap-5">
+              <span className="label-mono">/ {String(i + 1).padStart(2, '0')}</span>
+              <span className="font-display text-[20px] font-light tracking-[-0.02em] sm:text-[24px]">{q}</span>
+            </span>
+            <motion.span animate={{ rotate: open === i ? 45 : 0 }}>
+              <Icon name="Plus" size={20} />
             </motion.span>
           </button>
           <AnimatePresence initial={false}>
             {open === i && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <p className="px-5 pb-5 text-[14.5px] leading-relaxed text-ink-2">{a}</p>
-              </motion.div>
+              <motion.p initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="max-w-2xl overflow-hidden pb-6 pl-[3.6rem] text-[15px] leading-relaxed text-ink-2">
+                {a}
+              </motion.p>
             )}
           </AnimatePresence>
         </li>
@@ -125,17 +80,8 @@ function Faq() {
 export default function Landing() {
   const { session, signIn } = useApp();
   const navigate = useNavigate();
-  const reduce = useReducedMotion();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    if (paused || reduce) return undefined;
-    const t = setInterval(() => setActive((a) => (a + 1) % MODULES.length), 3800);
-    return () => clearInterval(t);
-  }, [paused, reduce]);
 
   if (session.status === 'loading') {
     return (
@@ -158,211 +104,180 @@ export default function Landing() {
       setBusy(false);
     }
   };
-  const unconfigured = session.configured === false;
+  const off = session.configured === false;
+  const wrap = 'mx-auto w-full max-w-[1224px] px-5 sm:px-8';
 
   return (
     <div className="min-h-svh overflow-x-clip bg-bg">
-      <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
-        <div className="mx-auto flex h-[72px] max-w-[1224px] items-center justify-between gap-4 px-5 sm:h-20 sm:px-8">
+      <header className="fixed inset-x-0 top-0 z-40">
+        <div className={cn(wrap, 'flex h-[72px] items-center justify-between')}>
           <a href="#top" aria-label="Recundle home">
             <RecundleLogo />
           </a>
-          <nav className="hidden items-center gap-7 md:flex" aria-label="Sections">
-            {NAV.map(([href, label]) => (
-              <a key={href} href={href} className="text-[14.5px] text-ink-2 transition hover:text-ink">{label}</a>
-            ))}
-          </nav>
-          <GetStarted onClick={start} busy={busy} disabled={unconfigured}>
-            <span className="sm:hidden">Sign in</span>
-            <span className="hidden sm:inline">Get Started</span>
-          </GetStarted>
+          <p className="label-mono hidden items-center gap-2 md:flex">
+            <span className="size-1.5 animate-pulse rounded-full bg-brand" /> Read-only · Gmail only · India
+          </p>
+          <button type="button" onClick={start} disabled={busy || off} className="text-[14px] font-medium text-ink transition hover:text-brand disabled:opacity-60">
+            Sign in
+          </button>
         </div>
       </header>
 
       <main id="top">
         {/* Hero */}
-        <section className="relative">
-          <div className="rails relative mx-auto max-w-[1224px] px-5 sm:px-8">
-            <div className="mx-auto flex max-w-3xl flex-col items-center pt-16 text-center sm:pt-24">
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[13px] text-ink-2">
-                <span className="size-1.5 rounded-full bg-accent ring-2 ring-brand/40" />
-                Track. Bundle. Recundle.
-              </motion.p>
-              <Heading as="h1" scroll={false} dark="Your money and to-dos," muted="bundled in one place" center className="sm:text-[68px]" />
-              <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mt-6 max-w-[620px] text-[16.5px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <section className="relative flex min-h-svh flex-col overflow-hidden pt-[72px]">
+          <CircuitGrid />
+          <div className={cn(wrap, 'relative flex flex-1 flex-col justify-between gap-12 pb-12 pt-16 sm:pt-24')}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="glass max-w-[880px] rounded-xl p-6 sm:p-7">
+              <p className="label-mono">N° 001 — Personal finance · Track. Bundle. Recundle.</p>
+              <Title as="h1" dark="Your money, bundled" muted="into one calm view" tail="." className="mt-5 text-[46px] sm:text-[80px]" />
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-5 max-w-[620px] text-[16px] leading-relaxed text-ink-2">
                 Recundle reads the payment alerts, receipts and loan emails already in your Gmail, and shows where your money goes, what renews next, what you still owe, and what’s still pending.
               </motion.p>
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mt-9 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
-                <GetStarted onClick={start} busy={busy} size="lg" disabled={unconfigured}>Continue with Google</GetStarted>
-                <a href="#how" className={ghostLink}>
-                  <Icon name="Play" size={14} className="fill-current" /> See how it works
-                </a>
-              </motion.div>
-              {unconfigured && <p className="mt-5 max-w-xl rounded-md border border-warn/30 bg-warn-soft px-4 py-3 text-[13.5px] text-warn">Sign-in isn’t available yet: this deployment is missing its Google client secret. See the README.</p>}
-              {error && <p className="mt-5 max-w-xl text-[14px] text-bad">{error}</p>}
-            </div>
-            <div className="relative -mx-5 mt-14 sm:-mx-8 sm:mt-20">
-              <PixelMosaic cols={46} rows={12} />
-              <HeroSlab />
-            </div>
+              {off && <p className="mt-4 text-[13.5px] text-warn">Sign-in isn’t available yet: this deployment is missing its Google client secret.</p>}
+              {error && <p className="mt-4 text-[14px] text-bad">{error}</p>}
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8 }} className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="label-mono mb-4">This month closes in</p>
+                <MonthCountdown />
+              </div>
+              <Cta onClick={start} busy={busy} disabled={off}>Continue with Google</Cta>
+            </motion.div>
           </div>
         </section>
 
-        <Section className="py-8" crosses={false}>
-          <p className="mb-4 text-center text-[13px] font-medium uppercase tracking-[0.12em] text-ink-3">Reads alerts and receipts from</p>
-          <Marquee items={['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak', 'IDFC FIRST', 'Google Pay alerts', 'PhonePe alerts', 'Netflix', 'Spotify', 'Amazon', 'Swiggy', 'Bajaj Finserv', 'Tata Capital']} />
-        </Section>
+        {/* 01 / Vision */}
+        <section className={cn(wrap, 'py-24 sm:py-36')}>
+          <div className="grid gap-8 lg:grid-cols-[1fr_2.4fr]">
+            <Eyebrow n="01">Vision</Eyebrow>
+            <motion.p initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="font-display text-[26px] font-light leading-[1.3] tracking-[-0.02em] sm:text-[32px]">
+              One place for the four things that weigh on you: what you spend, what renews, what you owe, and <span className="text-brand">what’s still pending</span>, read from the emails you already get and corrected by you.
+            </motion.p>
+          </div>
+          <div className="mt-20 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+            {PILLARS.map(([title, text], i) => (
+              <motion.div key={title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.7 }}>
+                <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ delay: 0.15 + i * 0.1, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="h-px origin-left bg-ink" />
+                <p className="label-mono mt-5">—</p>
+                <p className="mt-4 font-display text-[56px] font-light leading-none tracking-[-0.05em] sm:text-[64px]">/ {String(i + 1).padStart(2, '0')}</p>
+                <p className="mt-6 text-[18px] font-medium">{title}</p>
+                <p className="mt-3 max-w-[260px] text-[14.5px] leading-relaxed text-ink-2">{text}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
 
-        <Section id="modules" className="grid items-center gap-12 py-20 sm:py-28 lg:grid-cols-2">
-          <div>
-            <Heading dark="One app," muted="four answers" />
-            <p className="mt-6 max-w-[540px] text-[16px] leading-relaxed text-ink-2">
-              Expenses, subscriptions, loans and to-dos share one set of data, so a payment in Expenses is the same one in its subscription’s history or its loan’s EMIs, never counted twice.
-            </p>
-            <div className="mt-10 grid gap-2 sm:grid-cols-2" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-              {MODULES.map((m, i) => (
-                <button key={m.id} type="button" onClick={() => setActive(i)} aria-pressed={active === i} className={cn('rounded-md border p-4 text-left transition-colors', active === i ? 'border-line bg-surface' : 'border-transparent hover:bg-surface/60')}>
-                  <p className={cn('font-display text-[18px] font-medium', active === i ? 'text-ink' : 'text-ink-3')}>{m.title}</p>
-                  <p className={cn('mt-2 text-[14.5px] leading-relaxed', active === i ? 'text-ink-2' : 'text-ink-3')}>{m.text}</p>
-                </button>
-              ))}
+        {/* 02 / Modules: cards drift sideways while you scroll */}
+        <section id="modules" className="relative">
+          <div className={cn(wrap, 'flex flex-col gap-4 pb-4 sm:flex-row sm:items-end sm:justify-between')}>
+            <div>
+              <Eyebrow n="02">Modules</Eyebrow>
+              <Title dark="Four answers," muted="one set of data" className="mt-4 text-[34px] sm:text-[44px]" />
             </div>
+            <p className="max-w-[340px] text-[15px] leading-relaxed text-ink-2">A payment counted in Expenses is the same one in its subscription or loan, never counted twice. Keep scrolling: they drift past, slowly.</p>
           </div>
-          <IsoStack active={MODULES[active].id} />
-        </Section>
-
-        <Section className="py-20 sm:py-28">
-          <Heading dark="Personal finance built for" muted="accuracy and privacy" className="max-w-[900px]" />
-          <p className="mt-6 max-w-[620px] text-[16px] leading-relaxed text-ink-2">Recundle only shows what your emails, your statements and you have told it, and keeps your data with you.</p>
-          <div className="mt-14 grid border-l border-t border-line sm:grid-cols-2 lg:grid-cols-3">
-            {PRINCIPLES.map(([icon, title, text], i) => (
-              <motion.div key={title} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.06 }} className="border-b border-r border-line p-6 sm:p-8">
-                <span className="flex size-10 items-center justify-center rounded border border-ink/40">
-                  <Icon name={icon} size={18} />
-                </span>
-                <h3 className="mt-5 text-[19px] font-medium">{title}</h3>
-                <p className="mt-2 text-[14.5px] leading-relaxed text-ink-2">{text}</p>
-              </motion.div>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="how" className="py-20 sm:py-28">
-          <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>How it helps</Eyebrow>
-            <Heading dark="Answers for your" muted="whole financial life" center className="mt-3" />
-            <p className="mx-auto mt-6 max-w-[600px] text-[16px] leading-relaxed text-ink-2">Sign in with Google and Recundle reads the last 12 months of financial email. Everything below works from that, from statements you import, and from your corrections.</p>
-          </div>
-          <div className="mt-14 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {USE_CASES.map(([icon, title, text], i) => (
-              <motion.div key={title} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.07 }} className="group rounded-md border border-line bg-surface p-6">
-                <div className="dot-grid flex h-32 items-center justify-center rounded border border-line">
-                  <span className="flex size-14 items-center justify-center rounded-lg border border-ink/70 bg-surface shadow-[4px_4px_0_0_var(--ink)] transition-transform group-hover:-translate-y-1">
-                    <Icon name={icon} size={24} />
-                  </span>
-                </div>
-                <h3 className="mt-5 text-[19px] font-medium">{title}</h3>
-                <p className="mt-2 text-[14.5px] leading-relaxed text-ink-2">{text}</p>
-              </motion.div>
-            ))}
-          </div>
-        </Section>
-
-        <Section className="pt-20 sm:pt-24">
-          <Heading dark="Built around how" muted="you actually pay" center />
-          <div className="-mx-5 mt-14 grid grid-cols-2 border-t border-line sm:-mx-8 lg:grid-cols-4">
-            {STATS.map(([n, l], i) => (
-              <div key={l} className={cn('flex flex-col items-center justify-center px-4 py-10 text-center', i !== 3 && 'border-r border-line', i === 1 && 'border-r-0 lg:border-r', i < 2 && 'border-b border-line lg:border-b-0')}>
-                <p className="font-display text-[44px] font-medium leading-none tracking-tight sm:text-[56px]"><CountUp value={n} /></p>
-                <p className="mt-3 text-[14.5px] text-ink-2">{l}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section className="py-20 sm:py-28" bg="dot-grid">
-          <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>Sources</Eyebrow>
-            <Heading dark="Works with what" muted="you already use" center className="mt-3" />
-          </div>
-          <div className="mt-14">
-            <SourcesDiagram />
-          </div>
-          <p className="mx-auto mt-10 max-w-xl text-center text-[14px] text-ink-3">Google Pay, PhonePe and banks don’t let other apps read your transactions, so Recundle uses what they email you and the statements you import.</p>
-        </Section>
-
-        <Section id="access" className="pt-20 sm:pt-28">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <Heading dark="Simple, transparent" muted="access" className="max-w-[640px]" />
-            <p className="max-w-[380px] text-[15.5px] leading-relaxed text-ink-2">What Google will ask you to allow, where your data lives, and what Recundle never does.</p>
-          </div>
-          <div className="-mx-5 mt-14 grid border-t border-line sm:-mx-8 lg:grid-cols-3">
-            {ACCESS.map((a, i) => (
-              <div key={a.title} className={cn('flex flex-col', i < 2 && 'border-b border-line lg:border-b-0 lg:border-r')}>
-                <div className="border-b border-line px-5 py-7 sm:px-8">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-[21px] font-medium">{a.title}</h3>
-                    <span className={cn('rounded-[3px] px-2 py-1 text-[11.5px] font-medium uppercase tracking-wide', a.featured ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-ink-2')}>{a.tag}</span>
+          <DriftRow
+            items={MODULES}
+            renderCard={(m, i) => (
+              <article key={m.code} className="w-[82vw] max-w-[640px] shrink-0">
+                <div className="group relative aspect-video overflow-hidden rounded-xl">
+                  <div className="h-full w-full transition-transform duration-700 group-hover:scale-[1.04]">
+                    <RibbonArt variant={i} />
                   </div>
-                  <p className="mt-2 text-[14.5px] leading-relaxed text-ink-2">{a.text}</p>
-                  {a.featured && (
-                    <GetStarted onClick={start} busy={busy} className="mt-6 w-full" disabled={unconfigured}>
-                      Continue with Google <Icon name="ArrowRight" size={16} />
-                    </GetStarted>
-                  )}
+                  <span className="label-mono absolute left-4 top-4 rounded bg-surface/70 px-2 py-1 backdrop-blur">{m.sub}</span>
                 </div>
-                <div className="px-5 py-7 sm:px-8">
-                  <p className="font-display text-[16px] font-medium">What it does:</p>
-                  <ul className="mt-3">
-                    {[...a.yes.map((x) => ['CircleCheck', x]), ...a.no.map((x) => ['CircleSlash', x])].map(([icon, x]) => (
-                      <li key={x} className="flex items-start gap-3 border-b border-dashed border-line py-3 text-[14.5px] text-ink-2">
-                        <Icon name={icon} size={18} className="mt-px shrink-0 text-ink-3" />
-                        {x}
-                      </li>
-                    ))}
-                  </ul>
+                <div className="mt-4 h-px bg-ink" />
+                <div className="mt-4 flex items-start justify-between gap-6">
+                  <div>
+                    <p className="label-mono">{m.code}</p>
+                    <h3 className="mt-2 text-[22px] font-normal tracking-[-0.02em]">{m.title}</h3>
+                    <p className="mt-2 max-w-[460px] text-[14px] leading-relaxed text-ink-2">{m.text}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-3">
+                    <p className="label-mono">{m.kind}</p>
+                    <Icon name="ArrowRight" size={20} />
+                  </div>
                 </div>
-              </div>
+              </article>
+            )}
+          />
+        </section>
+
+        {/* Quote over floating gems */}
+        <section className="relative h-[90svh] min-h-[560px] overflow-hidden">
+          <GemField className="absolute inset-0" />
+          <div className={cn(wrap, 'relative flex h-full items-center')}>
+            <motion.blockquote initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.9 }} className="glass max-w-[920px] rounded-xl p-6 sm:p-8">
+              <Title as="p" dark="We don’t guess your numbers." muted="We read your receipts, and you correct the rest" tail="." className="text-[36px] sm:text-[64px]" />
+              <footer className="label-mono mt-6">— How Recundle works</footer>
+            </motion.blockquote>
+          </div>
+        </section>
+
+        {/* 03 / Privacy */}
+        <section id="privacy" className={cn(wrap, 'py-24 sm:py-36')}>
+          <div className="grid gap-8 lg:grid-cols-[1fr_2.4fr]">
+            <Eyebrow n="03">Privacy</Eyebrow>
+            <Title dark="Your inbox stays yours." muted="Your numbers stay on your device" tail="." className="text-[34px] sm:text-[52px]" />
+          </div>
+          <div className="mt-20 grid gap-10 md:grid-cols-3 md:gap-8">
+            {PRIVACY.map(([title, text], i) => (
+              <motion.div key={title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.7 }}>
+                <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ delay: 0.15 + i * 0.1, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="h-px origin-left bg-ink" />
+                <p className="mt-6 font-display text-[44px] font-light leading-none tracking-[-0.05em]">/ {String(i + 1).padStart(2, '0')}</p>
+                <p className="mt-5 text-[18px] font-medium">{title}</p>
+                <p className="mt-3 max-w-[320px] text-[14.5px] leading-relaxed text-ink-2">{text}</p>
+              </motion.div>
             ))}
           </div>
-        </Section>
+        </section>
 
-        <Section id="faq" className="grid gap-10 py-20 sm:py-28 lg:grid-cols-[1fr_1.15fr]">
-          <div>
-            <Heading dark="Questions," muted="answered" />
-            <p className="mt-6 max-w-[420px] text-[15.5px] leading-relaxed text-ink-2">Quick answers about how Recundle reads your finances and keeps them private.</p>
+        {/* 04 / Questions */}
+        <section className={cn(wrap, 'pb-24 sm:pb-36')}>
+          <div className="grid gap-8 lg:grid-cols-[1fr_2.4fr]">
+            <Eyebrow n="04">Questions</Eyebrow>
+            <Faq />
           </div>
-          <Faq />
-        </Section>
+        </section>
 
-        <Section className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-2">
-          <div>
-            <Heading dark="Ready to bundle" muted="your finances?" />
-            <div className="mt-9 flex flex-col gap-2.5 sm:flex-row">
-              <GetStarted onClick={start} busy={busy} size="lg" disabled={unconfigured}>Continue with Google</GetStarted>
-              <a href="#modules" className={ghostLink}>
-                <Icon name="Play" size={14} className="fill-current" /> See the modules
-              </a>
+        {/* 05 / Access */}
+        <section className="relative overflow-hidden py-24 sm:py-36">
+          <CircuitGrid seed={29} dots={18} />
+          <div className={cn(wrap, 'relative grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]')}>
+            <div>
+              <Eyebrow n="05">Access</Eyebrow>
+              <Title dark="Bundle your" muted="money" tail="." className="mt-4 text-[46px] sm:text-[72px]" />
+              <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-ink-2">Sign in with Google and Recundle reads the last 12 months of financial email. It takes a minute or two, and you can start using it while it reads.</p>
             </div>
+            <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="glass rounded-xl p-6 sm:p-7">
+              <p className="label-mono">This month closes in</p>
+              <MonthCountdown compact className="mt-4" />
+              <div className="mt-7 border-t border-ink/12 pt-6">
+                <p className="label-mono">Recundle reads</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {['Bank & UPI alerts', 'Receipts', 'Subscriptions', 'Loan emails & NOCs'].map((t) => (
+                    <span key={t} className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-surface/70 px-3 py-2 text-[13.5px]">
+                      <Icon name="Check" size={14} className="text-brand" /> {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Cta onClick={start} busy={busy} disabled={off} className="mt-7 w-full">Continue with Google</Cta>
+              <p className="mt-4 text-[12.5px] text-ink-3">Read-only. Nothing is sent, deleted or stored on our servers. Sign out any time.</p>
+            </motion.div>
           </div>
-          <div className="flex justify-center lg:justify-end">
-            <Shapes />
-          </div>
-        </Section>
+        </section>
       </main>
 
-      <footer className="hairline">
-        <div className="rails mx-auto flex max-w-[1224px] flex-col gap-6 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div>
-            <RecundleLogo />
-            <p className="mt-2 text-[13.5px] text-ink-3">Track. Bundle. Recundle.</p>
-          </div>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-[14px] text-ink-2" aria-label="Footer">
-            {NAV.map(([href, label]) => (
-              <a key={href} href={href} className="hover:text-ink">{label}</a>
-            ))}
+      <footer className="border-t border-ink/12">
+        <div className={cn(wrap, 'flex flex-col gap-4 py-10 sm:flex-row sm:items-center sm:justify-between')}>
+          <RecundleLogo />
+          <p className="text-[13px] text-ink-3">© {new Date().getFullYear()} Recundle. Track. Bundle. Recundle.</p>
+          <nav className="flex gap-6 text-[13.5px] text-ink-2" aria-label="Footer">
+            <a href="#modules" className="hover:text-ink">Modules</a>
+            <a href="#privacy" className="hover:text-ink">Privacy</a>
           </nav>
-          <p className="text-[13px] text-ink-3">© {new Date().getFullYear()} Recundle</p>
         </div>
       </footer>
     </div>

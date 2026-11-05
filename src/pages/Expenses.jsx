@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge, Button, Card, CardHead, Dialog, Empty, Field, Icon, Input, PageHeader, SearchInput, Segmented, Select, Tile } from '@/components/ui';
-import { BarList, CategoryDonut, IncomeExpenseChart } from '@/components/charts';
+import { BarList, CashFlowChart, CategoryDonut, MoneyFlow, Sparkline, SpendHeatmap } from '@/components/charts';
 import { categoryMap, GroupedList, PeriodPicker, TransactionRow } from '@/components/expenses/common';
 import TransactionSheet from '@/components/expenses/TransactionSheet';
 import PayeeSheet from '@/components/expenses/PayeeSheet';
@@ -108,6 +108,24 @@ export default function Expenses() {
   );
 }
 
+/** Sources → categories (+ saved) for the money-flow chart. Own transfers are already left out. */
+function moneyFlow(txns, range, breakdown, m) {
+  if (!m.moneyIn && !m.moneyOut) return null;
+  const src = entities(txns.filter((t) => inRange(t, range)), 'in');
+  const sources = src.slice(0, 4).map((e) => ({ key: e.key, label: e.name, value: e.total }));
+  const restIn = m.moneyIn - sources.reduce((s, x) => s + x.value, 0);
+  if (restIn > 0) sources.push({ key: 'other-in', label: 'Other sources', value: restIn });
+  const targets = breakdown.slice(0, 6).map((c) => ({ key: c.id, label: c.label, value: c.total }));
+  const restOut = m.moneyOut - targets.reduce((s, x) => s + x.value, 0);
+  if (restOut > 0) targets.push({ key: 'other-out', label: 'Other payments', value: restOut });
+  const saved = m.moneyIn - m.moneyOut;
+  if (saved > 0) targets.push({ key: 'saved', label: 'Kept', value: saved, saved: true });
+  const fromBalance = saved < 0 ? -saved : 0;
+  if (fromBalance) sources.push({ key: 'balance', label: 'Earlier balance', value: fromBalance });
+  if (!sources.length || !targets.length) return null;
+  return { sources, targets, fromBalance };
+}
+
 function Overview({ m, range, txns, inPeriod, subscriptions, store, cats, showTxns, setPayee, openTxn, today }) {
   const endKey = monthKey(range.to);
   const series = useMemo(() => monthlySeries(txns, endKey, Math.max(6, Math.min(12, range.months + 5))), [txns, endKey, range.months]);
@@ -117,10 +135,16 @@ function Overview({ m, range, txns, inPeriod, subscriptions, store, cats, showTx
   const largest = useMemo(() => inPeriod.filter((t) => t.direction === 'out' && !t.excluded && t.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5), [inPeriod]);
   const perMonth = range.months > 1;
   const top = m.topCategory;
+  const flow = useMemo(() => moneyFlow(txns, range, breakdown, m), [txns, range, breakdown, m]);
+  const days = useMemo(() => {
+    const map = new Map();
+    for (const t of txns) if (!t.excluded && t.direction === 'out' && t.type === 'expense') map.set(t.date, (map.get(t.date) ?? 0) + t.amount);
+    return map;
+  }, [txns]);
 
   const tiles = [
-    { label: 'Total income', value: inr(m.income), icon: 'TrendingUp', tone: 'good', sub: 'Salary and other earnings', onClick: () => showTxns({ dir: 'in', type: 'income' }) },
-    { label: 'Total expenses', value: inr(m.expenses), icon: 'TrendingDown', tone: 'warn', sub: m.refunds ? `After ${inr(m.refunds)} of refunds` : 'Spending, excluding transfers', onClick: () => showTxns({ dir: 'out', type: 'expense' }) },
+    { label: 'Total income', value: inr(m.income), icon: 'TrendingUp', tone: 'good', sub: 'Salary and other earnings', onClick: () => showTxns({ dir: 'in', type: 'income' }), spark: <Sparkline values={series.map((x) => x.income)} color="viz-in" /> },
+    { label: 'Total expenses', value: inr(m.expenses), icon: 'TrendingDown', tone: 'warn', sub: m.refunds ? `After ${inr(m.refunds)} of refunds` : 'Spending, excluding transfers', onClick: () => showTxns({ dir: 'out', type: 'expense' }), spark: <Sparkline values={series.map((x) => x.expenses)} color="viz-out" /> },
     { label: 'Net cash flow', value: inr(m.netCashFlow, { sign: true }), icon: 'ArrowLeftRight', tone: m.netCashFlow >= 0 ? 'good' : 'bad', sub: 'Money received − money spent', emphasis: true },
     { label: 'Money received', value: inr(m.moneyIn), icon: 'ArrowDownLeft', sub: 'All credits except own transfers', onClick: () => showTxns({ dir: 'in' }) },
     { label: 'Money spent', value: inr(m.moneyOut), icon: 'ArrowUpRight', sub: 'All debits except own transfers', onClick: () => showTxns({ dir: 'out' }) },
@@ -141,13 +165,26 @@ function Overview({ m, range, txns, inPeriod, subscriptions, store, cats, showTx
       </p>
 
       <Card>
-        <CardHead title="Income vs expenses" subtitle="By month. Click a month to see its transactions." icon="ChartColumn" />
-        <IncomeExpenseChart data={series} selectedKey={range.months === 1 ? endKey : null} onSelect={(d) => showTxns({ period: 'custom', from: `${d.key}-01`, to: endOfMonth(d.key) })} />
+        <CardHead title="Cash flow" subtitle="Income and expenses by month. Click a month to see its transactions." icon="ChartSpline" />
+        <CashFlowChart data={series} selectedKey={range.months === 1 ? endKey : null} onSelect={(d) => showTxns({ period: 'custom', from: `${d.key}-01`, to: endOfMonth(d.key) })} />
         {series.some((s) => s.unusual) && (
           <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-warn">
             <Icon name="TriangleAlert" size={14} /> Unusually high spending in {series.filter((s) => s.unusual).map((s) => s.longLabel).join(', ')} (30%+ above the three months before).
           </p>
         )}
+      </Card>
+
+      {flow && (
+        <Card>
+          <CardHead title="Money flow" subtitle="Where this period's money came from and where it went. Click a category to see its payments." icon="Waypoints" />
+          <MoneyFlow sources={flow.sources} targets={flow.targets} onPickTarget={(k) => (k === 'other-out' ? showTxns({ dir: 'out' }) : showTxns({ cat: k }))} />
+          {flow.fromBalance > 0 && <p className="mt-1 text-[12.5px] text-ink-3">More went out than came in, so {inr(flow.fromBalance)} is shown as coming from earlier balance.</p>}
+        </Card>
+      )}
+
+      <Card>
+        <CardHead title="Daily spending" subtitle="Expenses per day over the last six months. Darker means more. Click a day to see its payments." icon="CalendarDays" />
+        {days.size ? <SpendHeatmap days={days} today={today} onPick={(d) => showTxns({ period: 'custom', from: d, to: d })} /> : <Empty icon="CalendarDays" title="No spending yet" />}
       </Card>
 
       <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">

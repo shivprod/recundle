@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Badge, Button, Card, CardHead, Empty, Icon, Progress, Tile } from '@/components/ui';
-import { IncomeExpenseChart } from '@/components/charts';
+import { CashFlowChart } from '@/components/charts';
 import { metrics, monthlySeries, periodRange } from '@/core/analytics';
 import { subscriptionTotals } from '@/core/subscriptions';
 import { loanTotals } from '@/core/loans';
 import { addDays, daysBetween, endOfMonth, inr, monthKey, pct, plural, shortDate } from '@/core/format';
 import { useApp } from '@/data/AppData';
 import { TODO_CATEGORIES } from './Todos';
-import { PixelMosaic } from '@/components/landing/Frame';
+import { CircuitGrid } from '@/components/landing/Grw';
 
 function greeting() {
   const h = new Date().getHours();
@@ -54,15 +54,15 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="relative">
-        <div className="pointer-events-none absolute -top-2 right-0 hidden w-[340px] md:block" aria-hidden="true">
-          <PixelMosaic cols={24} rows={5} />
-        </div>
-        <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-ink-3">{greeting()}</p>
+      <div className="relative overflow-hidden rounded-[var(--radius-xl)] border border-line bg-surface px-5 py-6 sm:px-7 sm:py-8">
+        <CircuitGrid width={1400} height={360} seed={5} className="opacity-70 [mask-image:linear-gradient(90deg,transparent_25%,black_75%)]" />
+        <div className="relative">
+        <p className="label-mono text-ink-3">01 / {greeting()}</p>
         <h1 className="mt-1 text-[34px] font-medium leading-tight sm:text-[46px]">{first ? <>Hi {first}, <span className="text-ink/45">here’s your month.</span></> : 'Welcome.'}</h1>
         <p className="mt-1 text-[14px] text-ink-2">
           {scan.running ? `Reading your Gmail… ${scan.scanned} emails checked so far.` : dataState.status === 'loading' ? 'Loading your data…' : `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.`}
         </p>
+        </div>
       </div>
 
       {nothing && !scan.running && (
@@ -82,8 +82,8 @@ export default function Dashboard() {
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <Card>
-          <CardHead title="Monthly performance" subtitle="Income and expenses, last 6 months" icon="ChartColumn" action={<Link to="/expenses" className="text-[13px] font-medium text-primary hover:underline">Expenses</Link>} />
-          <IncomeExpenseChart data={series} height={230} onSelect={(d) => navigate(`/expenses?tab=transactions&period=custom&from=${d.key}-01&to=${endOfMonth(d.key)}`)} />
+          <CardHead title="Cash flow" subtitle="Income and expenses, last 6 months" icon="ChartSpline" action={<Link to="/expenses" className="text-[13px] font-medium text-primary hover:underline">Expenses</Link>} />
+          <CashFlowChart data={series} height={240} onSelect={(d) => navigate(`/expenses?tab=transactions&period=custom&from=${d.key}-01&to=${endOfMonth(d.key)}`)} />
         </Card>
         <Card>
           <CardHead title="Commitments" subtitle="What leaves every month" icon="Repeat" />

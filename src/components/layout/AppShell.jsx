@@ -176,7 +176,7 @@ export default function AppShell() {
 
       <main className="rails relative mx-auto min-h-[calc(100svh-3.5rem)] w-full max-w-6xl px-4 pb-10 pt-5 sm:px-8 sm:pt-8">
         <span className="cross -left-[6px] -top-[7px] hidden sm:block" aria-hidden="true" />
-        <span className="cross -right-[6px] -top-[7px] hidden sm:block" aria-hidden="true" />
+        <span className="cross -right-[6px] -top-[7px] hidden 2xl:block" aria-hidden="true" />
         <ScreenBoundary key={pathname}>
           <motion.div key={pathname} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
             <Outlet />

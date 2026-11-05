@@ -112,7 +112,7 @@ export function CountUp({ value }) {
 }
 
 /** A headline number. `onClick` makes the whole tile a button that drills into the detail. */
-export function Tile({ label, value, sub, icon, tone, onClick, emphasis, className }) {
+export function Tile({ label, value, sub, icon, tone, onClick, emphasis, className, spark }) {
   const Tag = onClick ? motion.button : motion.div;
   return (
     <Tag
@@ -141,6 +141,7 @@ export function Tile({ label, value, sub, icon, tone, onClick, emphasis, classNa
         <CountUp value={value} />
       </div>
       {sub && <div className="mt-1 flex min-w-0 items-center gap-1 truncate text-[12.5px] text-ink-3">{sub}</div>}
+      {spark && <div className="-mx-1 mt-2">{spark}</div>}
       {onClick && <Icon name="ArrowUpRight" size={14} className="absolute bottom-4 right-4 text-ink-3 opacity-0 transition group-hover:opacity-100" />}
     </Tag>
   );
