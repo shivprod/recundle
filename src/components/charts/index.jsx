@@ -159,7 +159,7 @@ export function BarList({ rows, onPick, valueLabel = (r) => inr(r.total), sub, m
             </div>
             {sub && <div className="mt-0.5 truncate text-[12px] text-ink-3">{sub(r)}</div>}
             <div className="mt-1.5 h-1.5 w-full rounded-full bg-surface-2">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(2, (r.total / max) * 100)}%` }} />
+              <div className="h-full rounded-full bg-brand" style={{ width: `${Math.max(2, (r.total / max) * 100)}%` }} />
             </div>
           </>
         );

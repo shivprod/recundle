@@ -20,7 +20,7 @@ function Row({ icon, title, children, status }) {
 }
 
 export default function Settings() {
-  const { session, store, scan, syncNow, scanHistory, signIn, signOut, actions, dataState, saveNow } = useApp();
+  const { session, store, scan, syncNow, scanHistory, signIn, signOut, actions } = useApp();
   const navigate = useNavigate();
   const [months, setMonths] = useState('24');
   const [importing, setImporting] = useState(false);
@@ -48,8 +48,8 @@ export default function Settings() {
         <Row icon="Mail" title="Gmail (read-only)" status={a.gmail ? <Badge tone="good" icon="Check">Connected</Badge> : <Button size="sm" onClick={reconnect}>Allow Gmail</Button>}>
           Reads payment alerts, receipts, subscription and loan emails. Recundle can't send, delete or change email.
         </Row>
-        <Row icon="HardDrive" title="Google Drive app folder" status={a.drive ? <Badge tone="good" icon="Check">Connected</Badge> : <Button size="sm" onClick={reconnect}>Allow Drive storage</Button>}>
-          {a.drive ? `Your data is saved privately in your Drive. ${dataState.status === 'saving' ? 'Saving…' : dataState.status === 'error' ? `Last save failed: ${dataState.error}` : 'All changes saved.'}` : 'Without it your data is kept only in this browser and is lost when you sign out.'}
+        <Row icon="Smartphone" title="Your data" status={<Badge tone="info">On this device</Badge>}>
+          Saved in this browser (IndexedDB). It isn't sent to Recundle's servers or synced to other devices. Download a backup below to keep a copy.
         </Row>
         <Row icon="Sparkles" title="AI reading of loan emails" status={session.ai ? <Badge tone="good">On</Badge> : <Badge>Off</Badge>}>
           {session.ai ? 'Closure letters, NOCs and unclear loan emails are read by Claude to extract figures. You still confirm every loan and closure.' : 'Rule-based reading only. The server owner can turn this on by setting ANTHROPIC_API_KEY.'}
@@ -92,7 +92,6 @@ export default function Settings() {
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="outline" icon="Download" onClick={actions.exportData}>Download a copy (JSON)</Button>
-          {a.drive && <Button variant="outline" icon="CloudUpload" onClick={() => saveNow()}>Save now</Button>}
           <Button variant="danger-ghost" icon="Trash2" onClick={() => setConfirm('delete')}>Delete all my Recundle data</Button>
         </div>
       </Card>
@@ -127,7 +126,7 @@ export default function Settings() {
           </>
         }
       >
-        {confirm === 'disconnect' ? 'Recundle’s access to your Gmail and Drive is revoked and you are signed out. Your data file stays in your Drive; delete it first if you want it gone.' : 'This device’s copy is removed; your data stays in your Google Drive.'}
+        {confirm === 'disconnect' ? 'Recundle’s access to your Gmail is revoked and you are signed out. Your data stays on this device; delete it first if you want it gone.' : 'Your data stays on this device for next time.'}
       </Dialog>
       <Dialog
         open={confirm === 'delete'}
@@ -135,7 +134,7 @@ export default function Settings() {
         title="Delete all Recundle data?"
         footer={<><Button variant="ghost" onClick={() => { setConfirm(null); setTyped(''); }}>Cancel</Button><Button variant="danger" disabled={typed !== 'DELETE'} onClick={async () => { try { await actions.deleteAllData(); } catch (err) { toast.error(err.message); } setConfirm(null); setTyped(''); }}>Delete everything</Button></>}
       >
-        <p>Transactions, your edits and rules, subscriptions, loans and to-dos are deleted from your Drive and this device. Your emails are not touched. This can't be undone; download a copy first if unsure.</p>
+        <p>Transactions, your edits and rules, subscriptions, loans and to-dos are deleted from this device. Your emails are not touched. This can't be undone; download a copy first if unsure.</p>
         <Input className="mt-3" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type DELETE to confirm" />
       </Dialog>
     </div>

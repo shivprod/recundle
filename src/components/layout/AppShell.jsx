@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button, Dialog, Icon, Spinner } from '@/components/ui';
@@ -24,9 +25,7 @@ function SyncStatus() {
   }, [scan.pausedUntil]);
   let text;
   if (scan.running) text = scan.pausedUntil ? `Google asked for a pause · resuming in ${Math.max(0, Math.ceil((scan.pausedUntil - now) / 1000))}s` : `Reading Gmail · ${scan.scanned} emails`;
-  else if (dataState.status === 'saving') text = 'Saving…';
-  else if (dataState.status === 'error') text = 'Not saved to Drive · retrying on next change';
-  else if (dataState.localOnly) text = 'Saved on this device only';
+  else if (dataState.error) text = `Couldn’t save on this device: ${dataState.error}`;
   else text = null;
   return (
     <div className="flex items-center gap-2">
@@ -79,7 +78,7 @@ function AccountMenu() {
             <Button
               onClick={async () => {
                 await signOut();
-                toast.success('Signed out. Your data stays in your Google Drive.');
+                toast.success('Signed out. Your data stays on this device for next time.');
                 navigate('/', { replace: true });
               }}
             >
@@ -88,16 +87,40 @@ function AccountMenu() {
           </>
         }
       >
-        This device's copy of your data is removed. Everything is still saved in your Google Drive and comes back when you sign in again.
+        Your data stays on this device and is there when you sign in again. To remove it, use Settings → Delete all my Recundle data.
       </Dialog>
     </div>
   );
 }
 
+/** Shows a message (instead of a blank page) if a screen fails, with a way back. */
+class ScreenBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div className="card mx-auto mt-10 max-w-lg p-6">
+        <p className="font-display text-[22px] font-medium">This screen hit a problem</p>
+        <p className="mt-2 text-[14px] text-ink-2">Your data is safe on this device. Reload to try again; if it keeps happening, the message below helps us fix it.</p>
+        <pre className="mt-3 overflow-x-auto rounded bg-surface-2 p-3 text-[12px] text-ink-2">{String(this.state.error?.message ?? this.state.error)}</pre>
+        <div className="mt-4 flex gap-2">
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+          <Button variant="outline" onClick={() => { this.setState({ error: null }); window.history.back(); }}>Go back</Button>
+        </div>
+      </div>
+    );
+  }
+}
+
 export default function AppShell() {
   const { pathname } = useLocation();
   const { session, signIn, scan } = useApp();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   const reconnect = session.needsReconnect || scan.code === 'reconnect';
   return (
     <div className="min-h-svh pb-20 lg:pb-0 lg:pl-60">
@@ -108,10 +131,16 @@ export default function AppShell() {
         </Link>
         <p className="mt-1 px-2 text-[12px] text-ink-3">Track. Bundle. Recundle.</p>
         <nav className="mt-6 flex flex-col gap-1" aria-label="Main">
+          <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-[0.1em] text-ink-3">Modules</p>
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] font-medium transition-colors', isActive ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')}>
-              <Icon name={n.icon} size={18} />
-              {n.label}
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('relative flex items-center gap-3 rounded px-3 py-2.5 text-[14.5px] font-medium transition-colors', isActive ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')}>
+              {({ isActive }) => (
+                <>
+                  {isActive && <motion.span layoutId="nav-bar" className="absolute inset-y-1.5 left-0 w-[3px] rounded-r bg-brand" />}
+                  <Icon name={n.icon} size={18} />
+                  {n.label}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -148,14 +177,18 @@ export default function AppShell() {
       <main className="rails relative mx-auto min-h-[calc(100svh-3.5rem)] w-full max-w-6xl px-4 pb-10 pt-5 sm:px-8 sm:pt-8">
         <span className="cross -left-[6px] -top-[7px] hidden sm:block" aria-hidden="true" />
         <span className="cross -right-[6px] -top-[7px] hidden sm:block" aria-hidden="true" />
-        <Outlet />
+        <ScreenBoundary key={pathname}>
+          <motion.div key={pathname} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}>
+            <Outlet />
+          </motion.div>
+        </ScreenBoundary>
       </main>
 
       {/* Bottom tabs (phones/tablets) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Main">
         <div className="mx-auto grid max-w-lg grid-cols-5">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', isActive ? 'text-ink' : 'text-ink-3')}>
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => cn('flex flex-col items-center gap-0.5 border-t-2 py-2 text-[11px] font-medium', isActive ? 'border-brand text-ink' : 'border-transparent text-ink-3')}>
               <Icon name={n.icon} size={21} />
               {n.label}
             </NavLink>

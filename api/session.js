@@ -12,6 +12,6 @@ export const GET = route(async (req) => {
     scopes: REQUESTED_SCOPES,
     ai: aiAvailable(),
     user: session ? { email: session.email, name: session.name, picture: session.picture } : null,
-    access: session ? { gmail: Boolean(session.gmail), drive: Boolean(session.drive) } : null,
+    access: session ? { gmail: Boolean(session.gmail) } : null,
   });
 });

@@ -108,6 +108,7 @@ export function HeroSlab() {
   return (
     <div className="pointer-events-none relative mx-auto -mt-44 h-[340px] w-full max-w-[760px] sm:-mt-60 sm:h-[420px]" style={{ perspective: 1800 }} aria-hidden="true">
       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-0">
+      <div className="float absolute inset-0">
       <div className="iso absolute left-1/2 top-[46%] w-[520px] -translate-x-1/2 -translate-y-1/2 scale-[0.62] sm:scale-100">
         <div className="rounded-lg border border-ink/70 bg-surface p-4 shadow-[10px_10px_0_0_var(--ink)]">
           <div className="flex items-center gap-2 border-b border-ink/20 pb-3">
@@ -135,6 +136,7 @@ export function HeroSlab() {
           </div>
         </div>
       </div>
+      </div>
       </motion.div>
     </div>
   );
@@ -144,7 +146,7 @@ export function HeroSlab() {
 export function SourcesDiagram() {
   const sources = [
     ['Mail', 'Gmail alerts & receipts'],
-    ['HardDrive', 'Google Drive (your data)'],
+    ['Bell', 'Bank SMS-style email alerts'],
     ['FileSpreadsheet', 'Bank statements (CSV)'],
     ['Smartphone', 'UPI apps via email'],
     ['CreditCard', 'Card alerts'],
@@ -153,25 +155,31 @@ export function SourcesDiagram() {
   return (
     <div className="relative mx-auto grid max-w-3xl grid-cols-2 items-center gap-y-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-x-10">
       <ul className="flex flex-col gap-3">
-        {sources.slice(0, 3).map(([icon, label], i) => <Source key={label} icon={icon} label={label} i={i} />)}
+        {sources.slice(0, 3).map(([icon, label], i) => <Source key={label} icon={icon} label={label} i={i} side="left" />)}
       </ul>
       <div className="order-first col-span-2 flex justify-center sm:order-none sm:col-span-1">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} className="flex size-28 items-center justify-center rounded-xl border border-ink/70 bg-surface shadow-[6px_6px_0_0_var(--ink)]">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} className="relative flex size-28 items-center justify-center rounded-xl border border-ink/70 bg-surface shadow-[6px_6px_0_0_var(--ink)]">
+          <span className="absolute -inset-3 animate-ping rounded-2xl border border-brand/40 [animation-duration:2.8s]" aria-hidden="true" />
           <RecundleMark className="size-14" />
         </motion.div>
       </div>
       <ul className="flex flex-col gap-3">
-        {sources.slice(3).map(([icon, label], i) => <Source key={label} icon={icon} label={label} i={i + 3} />)}
+        {sources.slice(3).map(([icon, label], i) => <Source key={label} icon={icon} label={label} i={i + 3} side="right" />)}
       </ul>
     </div>
   );
 }
 
-function Source({ icon, label, i }) {
+function Source({ icon, label, i, side }) {
+  const line = <span className="flow-line hidden h-px w-10 shrink-0 sm:block" aria-hidden="true" />;
   return (
-    <motion.li initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.06 }} className="flex items-center gap-3 rounded-md border border-line bg-surface px-3 py-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded border border-ink/40"><Icon name={icon} size={16} /></span>
-      <span className="text-[13.5px] font-medium">{label}</span>
+    <motion.li initial={{ opacity: 0, x: side === 'left' ? -16 : 16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }} className={cn('flex items-center', side === 'left' ? 'sm:-mr-10' : 'sm:-ml-10')}>
+      {side === 'right' && line}
+      <span className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-line bg-surface px-3 py-2.5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded border border-ink/40"><Icon name={icon} size={16} /></span>
+        <span className="text-[13.5px] font-medium">{label}</span>
+      </span>
+      {side === 'left' && line}
     </motion.li>
   );
 }

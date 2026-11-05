@@ -27,15 +27,13 @@ Google Pay, PhonePe and banks don't offer other apps access to your transactions
 
 ## Where the data lives
 
-Your edits, rules, imported transactions, loans and to-dos are saved as one JSON file, `recundle-data.json`, in your own Google Drive app-data folder (scope `drive.appdata`):
+On this device. Transactions, your edits, rules, subscriptions, loans and to-dos are saved in the browser's IndexedDB, under one record per Google account, and nothing is kept on Recundle's servers. Gmail is the only Google service Recundle uses.
 
-- Only Recundle can read it.
-- It doesn't appear in your Drive file list.
-- You can remove it from Drive settings, or with **Settings → Delete all my Recundle data**.
+- **Signing out keeps your data** for next time. **Settings → Delete all my Recundle data** removes it.
+- **Back up or move your data:** use **Settings → Download a copy**.
+- **Each browser has its own copy.** A new browser starts empty and reads Gmail again.
 
-Recundle's servers keep no copy. The browser keeps a cache for speed, and it is cleared when you sign out.
-
-Two devices are merged record by record, and the newer edit wins. Deletions are kept as tombstones so they sync too.
+**Gmail sync saves as it goes.** Each page of results is saved with the scan's position. Reloading or switching screens resumes the scan where it stopped, and later syncs only read new mail.
 
 ## Modules
 
@@ -148,9 +146,8 @@ Two devices are merged record by record, and the newer edit wins. Deletions are 
   - The key is derived from `GOOGLE_WEB_CLIENT_SECRET` using HKDF, with salt `recription-session-v1`.
 - **CSRF protection:** every API call must carry an `X-Recundle: 1` header. A cross-site page can't send it without a CORS preflight, which the server never allows.
 - **Least privilege:**
-  - `gmail.readonly`: Recundle can never send, delete or change email.
-  - `drive.appdata`: only Recundle's own hidden folder.
-  - Basic profile.
+  - `gmail.readonly`: Recundle can never send, delete or change email. This is the only Google data scope.
+    - Basic profile.
 - **No personal data in logs.** Server errors log only an error code.
 - **Audit trail:** edits, rules, subscription and loan status changes, imports and deletions (Settings → Change history).
 - **Your data, your control:** sign out (clears this device), disconnect Google (revokes access), download a JSON copy, or delete everything.
@@ -187,6 +184,8 @@ test/           node:test suites (all data made up)
 
 **Stack:** React 19 with Vite, Tailwind CSS 4, framer-motion, Recharts and lucide icons, with Vercel Node functions on the server. There is no database: storage is the user's Google Drive app folder.
 
+**Palette:** Quantus 2025: Electric Violet `#834DFB`, Turbo `#F0E100`, Haiti `#18102B` and Blue Chalk `#F5F3FF`, used for the logo and favicon too. Chart colours are derived from it and validated for colour-blind readers.
+
 **Design:** follows the Aoutive Framer template (aoutive.framer.website):
 - Monochrome layout framed by thin rails and hairlines, with "+" marks where they cross.
 - Square-cornered black and outlined buttons.
@@ -194,15 +193,20 @@ test/           node:test suites (all data made up)
 - A pixel-mosaic hero, line-drawn isometric illustrations, and bordered stats and access grids.
 - An uppercase FAQ accordion.
 
-Recundle teal (`#4DAAA7` / `#3F8F8B`) is kept as a small accent. Chart colours are validated for colour-vision deficiency. Dark mode is supported.
+Motion follows the template too:
+- Headings fill in word by word as you scroll.
+- A logo marquee, counting figures, flowing connector lines and a floating hero.
+- Page transitions, and tiles that lift on hover.
+
+Dark mode is supported.
 
 **Logo:** the logo mark is a placeholder; the original artwork was lost with the old repository.
 
 ## Set up and run
 
 ### 1. Google Cloud (project `286940691052`, OAuth client `286940691052-ss6b2j3m1hfp69678ce04oburpmjunuf`)
-- Enable the **Gmail API** and the **Google Drive API**.
-- Under **OAuth consent screen → Data access**, add the scopes `gmail.readonly` and `drive.appdata`.
+- Enable the **Gmail API**.
+- Under **OAuth consent screen → Data access**, add the `gmail.readonly` scope.
   - `gmail.readonly` is restricted: while the app is in Testing, add yourself as a test user (test-user access must be re-granted every 7 days).
   - A public launch needs Google verification and a security assessment.
 - Under **Credentials → the Web client → Authorised JavaScript origins**, add the site address (for example `https://recundle.vercel.app`) and `http://localhost:5173` for development. No redirect URI is needed.
@@ -233,5 +237,5 @@ npm test                     # 30 unit tests
 - **Loan figures are what the emails state.** Rate, tenure or balance are often missing; enter them from a statement. Estimates assume fixed rates and monthly EMIs.
 - **NOCs that exist only as PDF attachments are matched by subject and account, not by reading the PDF.** With AI reading on, the email text is read, but attachments still aren't.
 - **Subscription usage is unknown,** so Recundle never calls a subscription unused.
-- **The Drive data file must stay under about 4 MB** (Vercel's request limit), which is roughly 8,000 transactions.
+- **Data stays in one browser.** It doesn't sync between devices; use the backup download to move it.
 - **Classification rules match the payee name exactly,** with direction and optionally amount. Similar names need your confirmation.

@@ -4,11 +4,8 @@ import { readCookie, sessionCookie, unseal } from './session.js';
 export const DEFAULT_CLIENT_ID = '286940691052-ss6b2j3m1hfp69678ce04oburpmjunuf.apps.googleusercontent.com';
 export const clientId = () => process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 
-export const SCOPES = {
-  gmail: 'https://www.googleapis.com/auth/gmail.readonly',
-  drive: 'https://www.googleapis.com/auth/drive.appdata',
-};
-export const REQUESTED_SCOPES = ['openid', 'email', 'profile', SCOPES.gmail, SCOPES.drive];
+export const SCOPES = { gmail: 'https://www.googleapis.com/auth/gmail.readonly' };
+export const REQUESTED_SCOPES = ['openid', 'email', 'profile', SCOPES.gmail];
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -44,7 +41,6 @@ export async function exchangeCode(code, previous) {
     at: tokens.access_token,
     exp: Date.now() + (tokens.expires_in ?? 3600) * 1000,
     gmail: scopes.includes(SCOPES.gmail),
-    drive: scopes.includes(SCOPES.drive),
   };
 }
 

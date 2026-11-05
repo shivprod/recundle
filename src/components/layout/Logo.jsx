@@ -7,13 +7,13 @@ import { cn } from '@/lib/cn';
 export function RecundleMark({ className }) {
   return (
     <svg viewBox="0 0 64 64" className={cn('size-8', className)} aria-hidden="true">
-      <rect width="64" height="64" rx="12" fill="var(--ink)" />
-      <g fill="none" stroke="var(--bg)" strokeWidth="5" strokeLinecap="round">
-        <path d="M18 22h28" />
-        <path d="M18 32h20" />
-        <path d="M18 42h28" />
+      <rect width="64" height="64" rx="14" fill="#834DFB" />
+      <g fill="none" stroke="#F5F3FF" strokeWidth="5.5" strokeLinecap="round">
+        <path d="M17 21h30" />
+        <path d="M17 32h20" />
+        <path d="M17 43h30" />
       </g>
-      <circle cx="46" cy="32" r="4" fill="var(--brand)" />
+      <circle cx="46.5" cy="32" r="5" fill="#F0E100" />
     </svg>
   );
 }

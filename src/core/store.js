@@ -30,7 +30,7 @@ export function normalise(data) {
 
 const newer = (a, b) => ((a?.updatedAt ?? '') >= (b?.updatedAt ?? '') ? a : b);
 
-/** Record-by-record merge of two copies (this device and Drive). Newer edits win. */
+/** Record-by-record merge of two copies (for example, an exported backup and this device). Newer edits win. */
 export function mergeStores(a, b) {
   const A = normalise(a);
   const B = normalise(b);

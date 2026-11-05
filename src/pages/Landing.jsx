@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Icon, Spinner } from '@/components/ui';
+import { CountUp, Icon, Spinner } from '@/components/ui';
 import { RecundleLogo } from '@/components/layout/Logo';
-import { Eyebrow, Heading, PixelMosaic, Section } from '@/components/landing/Frame';
+import { Eyebrow, Heading, Marquee, PixelMosaic, Section } from '@/components/landing/Frame';
 import { HeroSlab, IsoStack, Shapes, SourcesDiagram } from '@/components/landing/Illustrations';
 import { useApp } from '@/data/AppData';
 import { cn } from '@/lib/cn';
@@ -24,7 +24,7 @@ const MODULES = [
 
 const PRINCIPLES = [
   ['Eye', 'Read-only Gmail', 'Recundle reads payment alerts, receipts and loan emails. It can never send, delete or change an email.'],
-  ['HardDrive', 'Stored in your Drive', 'Your edits, loans and to-dos live in a private folder in your own Google Drive, not on our servers.'],
+  ['Smartphone', 'Stays on your device', 'Your transactions, edits, loans and to-dos are saved in your browser, not on Recundle’s servers.'],
   ['BadgeCheck', 'Nothing invented', 'Every figure comes from an email, a statement or you. Estimates are always labelled.'],
   ['Wand', 'Learns from you', 'Correct a payee once and choose “apply to all”. Similar names are never changed without asking.'],
   ['CopyCheck', 'Counted once', 'A payment seen in a bank alert and a receipt is matched and counted once.'],
@@ -56,12 +56,12 @@ const ACCESS = [
     no: ['Never sends, deletes or changes email', 'Never stores email bodies'],
   },
   {
-    title: 'Google Drive',
-    tag: 'App folder only',
+    title: 'This device',
+    tag: 'Where data lives',
     featured: true,
-    text: 'A hidden folder only Recundle can use, holding your data.',
-    yes: ['Categories, rules and corrections', 'Loans, subscriptions and to-dos', 'Syncs across your devices'],
-    no: ['Can’t see any of your other files', 'Delete it any time from Settings'],
+    text: 'What Recundle finds, and everything you change, is saved in your browser.',
+    yes: ['Categories, rules and corrections', 'Loans, subscriptions and to-dos', 'Download a backup any time'],
+    no: ['Nothing kept on Recundle’s servers', 'Delete it all from Settings in one click'],
   },
   {
     title: 'Your profile',
@@ -75,7 +75,7 @@ const ACCESS = [
 const FAQ = [
   ['Do I need to share my bank password?', 'No. Recundle never asks for bank, UPI or card credentials. It reads the alerts and receipts your bank and apps already email you, and statements you choose to import.'],
   ['Can Recundle move money or pay bills?', 'No. It is read-only: it can show and organise your finances, but it can’t make payments or change anything in your accounts or email.'],
-  ['Where is my data stored?', 'In a private app folder in your own Google Drive, plus a temporary copy in your browser that is removed when you sign out. Recundle’s servers keep nothing.'],
+  ['Where is my data stored?', 'On this device, in your browser’s storage. Recundle’s servers keep nothing: emails are read, the payment details are sent back to your browser, and the email is discarded. You can download a backup or delete everything from Settings.'],
   ['Does it work with Google Pay and PhonePe?', 'Those apps don’t let other apps read your history, so Recundle uses the UPI alerts your bank emails you. Import a bank statement (CSV) to fill any gaps.'],
   ['What if a payment is categorised wrongly?', 'Open it and change it. Recundle asks whether to apply the change to all future payments from that payee, and remembers your choice.'],
   ['How are loan balances worked out?', 'From your lender’s emails where they state it. Anything calculated is labelled “Estimated”, and missing figures are shown as missing, never guessed.'],
@@ -87,7 +87,7 @@ function GetStarted({ onClick, busy, size = 'md', children = 'Get Started', clas
       type="button"
       onClick={onClick}
       disabled={busy || disabled}
-      className={cn('inline-flex items-center justify-center gap-2 rounded-[3px] bg-ink font-medium text-primary-ink transition hover:opacity-90 disabled:opacity-60', size === 'lg' ? 'h-11 px-6 text-[15px]' : 'h-10 px-5 text-[14px]', className)}
+      className={cn('inline-flex items-center justify-center gap-2 rounded-[3px] bg-primary font-medium text-primary-ink transition hover:opacity-90 disabled:opacity-60', size === 'lg' ? 'h-11 px-6 text-[15px]' : 'h-10 px-5 text-[14px]', className)}
     >
       {busy ? <Spinner size={16} /> : null}
       {children}
@@ -184,10 +184,11 @@ export default function Landing() {
         <section className="relative">
           <div className="rails relative mx-auto max-w-[1224px] px-5 sm:px-8">
             <div className="mx-auto flex max-w-3xl flex-col items-center pt-16 text-center sm:pt-24">
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6 rounded-full border border-line bg-surface px-3 py-1 text-[13px] text-ink-2">
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[13px] text-ink-2">
+                <span className="size-1.5 rounded-full bg-accent ring-2 ring-brand/40" />
                 Track. Bundle. Recundle.
               </motion.p>
-              <Heading as="h1" dark="Your money and to-dos," muted="bundled in one place" center className="sm:text-[68px]" />
+              <Heading as="h1" scroll={false} dark="Your money and to-dos," muted="bundled in one place" center className="sm:text-[68px]" />
               <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="mt-6 max-w-[620px] text-[16.5px] leading-relaxed text-ink-2 sm:text-[17px]">
                 Recundle reads the payment alerts, receipts and loan emails already in your Gmail, and shows where your money goes, what renews next, what you still owe, and what’s still pending.
               </motion.p>
@@ -206,6 +207,11 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+        <Section className="py-8" crosses={false}>
+          <p className="mb-4 text-center text-[13px] font-medium uppercase tracking-[0.12em] text-ink-3">Reads alerts and receipts from</p>
+          <Marquee items={['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak', 'IDFC FIRST', 'Google Pay alerts', 'PhonePe alerts', 'Netflix', 'Spotify', 'Amazon', 'Swiggy', 'Bajaj Finserv', 'Tata Capital']} />
+        </Section>
 
         <Section id="modules" className="grid items-center gap-12 py-20 sm:py-28 lg:grid-cols-2">
           <div>
@@ -267,7 +273,7 @@ export default function Landing() {
           <div className="-mx-5 mt-14 grid grid-cols-2 border-t border-line sm:-mx-8 lg:grid-cols-4">
             {STATS.map(([n, l], i) => (
               <div key={l} className={cn('flex flex-col items-center justify-center px-4 py-10 text-center', i !== 3 && 'border-r border-line', i === 1 && 'border-r-0 lg:border-r', i < 2 && 'border-b border-line lg:border-b-0')}>
-                <p className="font-display text-[44px] font-medium leading-none tracking-tight sm:text-[56px]">{n}</p>
+                <p className="font-display text-[44px] font-medium leading-none tracking-tight sm:text-[56px]"><CountUp value={n} /></p>
                 <p className="mt-3 text-[14.5px] text-ink-2">{l}</p>
               </div>
             ))}
@@ -288,7 +294,7 @@ export default function Landing() {
         <Section id="access" className="pt-20 sm:pt-28">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <Heading dark="Simple, transparent" muted="access" className="max-w-[640px]" />
-            <p className="max-w-[380px] text-[15.5px] leading-relaxed text-ink-2">Exactly what Google will ask you to allow, and what Recundle does, and never does, with it.</p>
+            <p className="max-w-[380px] text-[15.5px] leading-relaxed text-ink-2">What Google will ask you to allow, where your data lives, and what Recundle never does.</p>
           </div>
           <div className="-mx-5 mt-14 grid border-t border-line sm:-mx-8 lg:grid-cols-3">
             {ACCESS.map((a, i) => (
@@ -296,7 +302,7 @@ export default function Landing() {
                 <div className="border-b border-line px-5 py-7 sm:px-8">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-[21px] font-medium">{a.title}</h3>
-                    <span className={cn('rounded-[3px] px-2 py-1 text-[11.5px] font-medium uppercase tracking-wide', a.featured ? 'bg-ink text-primary-ink' : 'bg-surface-2 text-ink-2')}>{a.tag}</span>
+                    <span className={cn('rounded-[3px] px-2 py-1 text-[11.5px] font-medium uppercase tracking-wide', a.featured ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-ink-2')}>{a.tag}</span>
                   </div>
                   <p className="mt-2 text-[14.5px] leading-relaxed text-ink-2">{a.text}</p>
                   {a.featured && (

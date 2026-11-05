@@ -8,6 +8,7 @@ import { loanTotals } from '@/core/loans';
 import { addDays, daysBetween, endOfMonth, inr, monthKey, pct, plural, shortDate } from '@/core/format';
 import { useApp } from '@/data/AppData';
 import { TODO_CATEGORIES } from './Todos';
+import { PixelMosaic } from '@/components/landing/Frame';
 
 function greeting() {
   const h = new Date().getHours();
@@ -53,11 +54,14 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <p className="text-[14px] text-ink-3">{greeting()}</p>
-        <h1 className="text-[28px] font-bold tracking-tight sm:text-[32px]">{first ? `Hi ${first}.` : 'Welcome.'}</h1>
+      <div className="relative">
+        <div className="pointer-events-none absolute -top-2 right-0 hidden w-[340px] md:block" aria-hidden="true">
+          <PixelMosaic cols={24} rows={5} />
+        </div>
+        <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-ink-3">{greeting()}</p>
+        <h1 className="mt-1 text-[34px] font-medium leading-tight sm:text-[46px]">{first ? <>Hi {first}, <span className="text-ink/45">here’s your month.</span></> : 'Welcome.'}</h1>
         <p className="mt-1 text-[14px] text-ink-2">
-          {scan.running ? `Reading your Gmail… ${scan.scanned} emails checked so far.` : dataState.status === 'loading' ? 'Loading your data from Google Drive…' : `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.`}
+          {scan.running ? `Reading your Gmail… ${scan.scanned} emails checked so far.` : dataState.status === 'loading' ? 'Loading your data…' : `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.`}
         </p>
       </div>
 

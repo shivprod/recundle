@@ -39,7 +39,7 @@ export function ImportStatementDialog({ open, onClose }) {
   return (
     <Dialog open={open} onClose={() => { setResult(null); setError(null); onClose(); }} title="Import a bank statement" footer={<Button variant="ghost" onClick={onClose}>Done</Button>}>
       <div className="flex flex-col gap-3">
-        <p>Download your statement from net banking as a CSV file and choose it here. It's read in your browser; only the transactions are saved, in your Google Drive. Re-importing the same statement adds nothing twice, and payments already found in Gmail are matched, not double counted.</p>
+        <p>Download your statement from net banking as a CSV file and choose it here. It's read in your browser; only the transactions are saved, on this device. Re-importing the same statement adds nothing twice, and payments already found in Gmail are matched, not double counted.</p>
         <Field label="Account name (optional)" hint="Shown on each transaction, e.g. HDFC savings">
           <Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="HDFC savings" />
         </Field>

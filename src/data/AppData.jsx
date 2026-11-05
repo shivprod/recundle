@@ -3,52 +3,37 @@ import { toast } from 'sonner';
 import { api, ApiError } from './api';
 import { requestGoogleCode } from './google';
 import { addDays, addMonths, todayIso, uid } from '@/core/format';
-import { editTransaction, emptyStore, ingestEvents, mergeStores, newRule, normalise, patchRecord, putRecord, removeRecord, withAudit } from '@/core/store';
+import { editTransaction, emptyStore, ingestEvents, newRule, normalise, patchRecord, putRecord, removeRecord, withAudit } from '@/core/store';
+import { deleteData, loadData, saveData } from './localdb';
 import { buildTransactions } from '@/core/transactions';
 import { deriveSubscriptions } from '@/core/subscriptions';
 import { deriveLoans, loanRecordFrom } from '@/core/loans';
 import { statementToEvents } from '@/core/csv';
 
 /**
- * Everything the app knows lives here: the Google session, the user's data (synced to their Google
- * Drive app folder, cached on this device), the Gmail scan, and every action that changes data.
+ * Everything the app knows lives here: the Google session, the user's data (kept on this device in
+ * IndexedDB), the Gmail scan, and every action that changes data.
  * Pages read derived views (transactions, subscriptions, loans) and call actions; nothing else
  * touches storage.
  */
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
 
-const cacheKey = (email) => `recundle.data.${email}`;
-const readCache = (email) => {
-  try {
-    const raw = localStorage.getItem(cacheKey(email));
-    return raw ? normalise(JSON.parse(raw)) : null;
-  } catch {
-    return null;
-  }
-};
-const writeCache = (email, data) => {
-  try {
-    localStorage.setItem(cacheKey(email), JSON.stringify(data));
-  } catch {
-    // Storage full or blocked: Drive still holds the data.
-  }
-};
 const SCAN_STALE_MS = 6 * 3600_000;
 
 export function AppDataProvider({ children }) {
   const [session, setSession] = useState({ status: 'loading' });
   const [store, setStore] = useState(emptyStore());
-  const [dataState, setDataState] = useState({ status: 'idle', version: null, error: null, localOnly: false });
+  const [dataState, setDataState] = useState({ status: 'idle', error: null });
   const [scan, setScan] = useState({ running: false, scanned: 0, found: 0, pausedUntil: null, error: null });
-  const versionRef = useRef(null);
   const storeRef = useRef(store);
-  const dirtyRef = useRef(false);
   const saveTimer = useRef(null);
   const scanning = useRef(false);
+  const emailRef = useRef(null);
   const email = session.user?.email ?? null;
 
   storeRef.current = store;
+  emailRef.current = email;
 
   // ── Session ────────────────────────────────────────────────────────────
   const refreshSession = useCallback(async () => {
@@ -65,92 +50,57 @@ export function AppDataProvider({ children }) {
     refreshSession();
   }, [refreshSession]);
 
-  // ── Load + save ───────────────────────────────────────────────────────
-  const save = useCallback(
-    async (attempt = 0) => {
-      if (!email || !session.access?.drive) return;
-      clearTimeout(saveTimer.current);
-      dirtyRef.current = false;
-      setDataState((d) => ({ ...d, status: 'saving' }));
-      try {
-        const { version } = await api('data', { method: 'PUT', body: { data: storeRef.current, baseVersion: versionRef.current } });
-        versionRef.current = version;
-        setDataState((d) => ({ ...d, status: dirtyRef.current ? 'dirty' : 'saved', version, error: null }));
-      } catch (err) {
-        if (err instanceof ApiError && err.code === 'conflict' && attempt < 2) {
-          // Another device saved: merge both copies record by record, then save the result.
-          const merged = mergeStores(storeRef.current, err.body.data);
-          versionRef.current = err.body.version;
-          storeRef.current = merged;
-          setStore(merged);
-          writeCache(email, merged);
-          return save(attempt + 1);
-        }
-        dirtyRef.current = true;
-        setDataState((d) => ({ ...d, status: 'error', error: err.message }));
-      }
-    },
-    [email, session.access?.drive],
-  );
-
-  const scheduleSave = useCallback(() => {
-    dirtyRef.current = true;
-    setDataState((d) => ({ ...d, status: 'dirty' }));
+  // ── Load + save (on this device) ────────────────────────────────────────
+  const persist = useCallback((now = false) => {
     clearTimeout(saveTimer.current);
-    if (!scanning.current) saveTimer.current = setTimeout(() => save(), 1500);
-  }, [save]);
+    const write = () => {
+      const who = emailRef.current;
+      if (!who) return;
+      saveData(who, storeRef.current).catch((err) => setDataState((d) => ({ ...d, error: err.message })));
+    };
+    if (now) write();
+    else saveTimer.current = setTimeout(write, 400);
+  }, []);
 
   useEffect(() => {
     if (!email) return undefined;
     let cancelled = false;
-    const cached = readCache(email) ?? emptyStore();
-    setStore(cached);
-    if (!session.access?.drive) {
-      setDataState({ status: 'ready', version: null, error: null, localOnly: true });
-      return undefined;
-    }
-    setDataState({ status: 'loading', version: null, error: null, localOnly: false });
-    api('data')
-      .then(({ data, version }) => {
-        if (cancelled) return;
-        versionRef.current = version;
-        const merged = data ? mergeStores(cached, data) : cached;
-        setStore(merged);
-        writeCache(email, merged);
-        setDataState({ status: 'ready', version, error: null, localOnly: false });
-        const remoteStamp = data?.updatedAt ?? null;
-        if (merged.updatedAt && merged.updatedAt !== remoteStamp) scheduleSave();
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setDataState({ status: 'error', version: null, error: err.message, localOnly: false });
-      });
+    setDataState({ status: 'loading', error: null });
+    loadData(email).then((data) => {
+      if (cancelled) return;
+      const loaded = normalise(data);
+      storeRef.current = loaded;
+      setStore(loaded);
+      setDataState({ status: 'ready', error: null });
+    });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email, session.access?.drive]);
+  }, [email]);
 
-  // Save straight away when the tab is hidden, so a pending edit isn't lost.
+  // Save straight away when the tab is hidden or closed.
   useEffect(() => {
     const h = () => {
-      if (document.visibilityState === 'hidden' && dirtyRef.current && !scanning.current) save();
+      if (document.visibilityState === 'hidden') persist(true);
     };
     document.addEventListener('visibilitychange', h);
-    return () => document.removeEventListener('visibilitychange', h);
-  }, [save]);
+    window.addEventListener('pagehide', h);
+    return () => {
+      document.removeEventListener('visibilitychange', h);
+      window.removeEventListener('pagehide', h);
+    };
+  }, [persist]);
 
-  /** Applies a change to the data: updates the screen, this device's cache and (debounced) Drive. */
+  /** Applies a change: updates the screen and saves on this device. */
   const update = useCallback(
     (fn) => {
       const next = fn(storeRef.current);
       if (next === storeRef.current) return;
       storeRef.current = next;
       setStore(next);
-      if (email) writeCache(email, next);
-      scheduleSave();
+      persist();
     },
-    [email, scheduleSave],
+    [persist],
   );
 
   // ── Auth ───────────────────────────────────────────────────────────────
@@ -163,34 +113,39 @@ export function AppDataProvider({ children }) {
     return res;
   }, [session, refreshSession]);
 
+  /** Signs out. Data stays on this device for next time unless `forget` is set. */
   const signOut = useCallback(
-    async ({ disconnect = false } = {}) => {
-      if (dirtyRef.current) await save().catch(() => undefined);
+    async ({ disconnect = false, forget = false } = {}) => {
+      persist(true);
       await api('logout', { method: 'POST', body: { disconnect } }).catch(() => undefined);
-      if (email) {
-        try {
-          localStorage.removeItem(cacheKey(email));
-        } catch {
-          /* ignore */
-        }
-      }
-      versionRef.current = null;
-      setStore(emptyStore());
+      if (forget && email) await deleteData(email);
+      const empty = emptyStore();
+      storeRef.current = empty;
+      setStore(empty);
       setSession((s) => ({ ...s, user: null, access: null }));
     },
-    [email, save],
+    [email, persist],
   );
 
   // ── Gmail scan ────────────────────────────────────────────────────────
+  /**
+   * Reads one window of Gmail page by page. After every page the new transactions and the position
+   * (`sync.pending`) are saved, so reloading or switching pages mid-scan resumes instead of restarting.
+   */
   const runScan = useCallback(
-    async ({ after, before } = {}) => {
+    async ({ after, before, pageToken: startToken = null }) => {
       if (scanning.current) return;
       scanning.current = true;
       setScan({ running: true, scanned: 0, found: 0, pausedUntil: null, error: null });
-      let pageToken = null;
+      let pageToken = startToken;
       let scanned = 0;
       let found = 0;
+      const savePending = (token) => {
+        const s = storeRef.current;
+        storeRef.current = { ...s, sync: { ...s.sync, pending: { after: after ?? null, before: before ?? null, pageToken: token } } };
+      };
       try {
+        savePending(pageToken);
         do {
           let page;
           try {
@@ -198,50 +153,58 @@ export function AppDataProvider({ children }) {
           } catch (err) {
             if (err instanceof ApiError && err.code === 'rate_limited') {
               const wait = Math.min(120, err.body.retryAfter ?? 30);
-              setScan((s) => ({ ...s, pausedUntil: Date.now() + wait * 1000 }));
+              setScan((x) => ({ ...x, pausedUntil: Date.now() + wait * 1000 }));
               await new Promise((r) => setTimeout(r, wait * 1000));
-              setScan((s) => ({ ...s, pausedUntil: null }));
+              setScan((x) => ({ ...x, pausedUntil: null }));
+              continue;
+            }
+            // An expired page token: start this window again from its newest page.
+            if (err instanceof ApiError && err.status === 400 && pageToken) {
+              pageToken = null;
               continue;
             }
             throw err;
           }
           scanned += page.scanned;
           found += page.events.length;
-          const next = ingestEvents(storeRef.current, page.events, 'gmail');
-          storeRef.current = next;
-          setStore(next);
-          setScan((s) => ({ ...s, scanned, found }));
+          storeRef.current = ingestEvents(storeRef.current, page.events, 'gmail');
           pageToken = page.nextPageToken;
+          savePending(pageToken);
+          setStore(storeRef.current);
+          persist(true);
+          setScan((x) => ({ ...x, scanned, found }));
         } while (pageToken);
         const s = storeRef.current;
-        const finished = {
+        storeRef.current = {
           ...s,
           updatedAt: new Date().toISOString(),
           sync: {
             lastScanAt: new Date().toISOString(),
-            scannedFrom: [s.sync.scannedFrom, after].filter(Boolean).sort()[0] ?? after,
+            scannedFrom: [s.sync.scannedFrom, after].filter(Boolean).sort()[0] ?? after ?? null,
             scannedTo: before && s.sync.scannedTo ? s.sync.scannedTo : todayIso(),
             messages: (s.sync.messages ?? 0) + scanned,
+            pending: null,
           },
         };
-        storeRef.current = finished;
-        setStore(finished);
-        if (email) writeCache(email, finished);
+        setStore(storeRef.current);
+        persist(true);
         setScan({ running: false, scanned, found, pausedUntil: null, error: null, finishedAt: Date.now() });
       } catch (err) {
+        setStore(storeRef.current);
+        persist(true);
         setScan({ running: false, scanned, found, pausedUntil: null, error: err.message, code: err.code });
-        if (err.code === 'reconnect' || err.code === 'signed_out') setSession((s) => ({ ...s, needsReconnect: true }));
+        if (err.code === 'reconnect' || err.code === 'signed_out') setSession((x) => ({ ...x, needsReconnect: true }));
       } finally {
         scanning.current = false;
-        scheduleSave();
       }
     },
-    [email, scheduleSave],
+    [persist],
   );
 
-  /** New mail since the last scan (or the first 12 months on a new account). */
+  /** New mail since the last scan (or the first 12 months on a new account). Resumes an unfinished scan first. */
   const syncNow = useCallback(() => {
     const s = storeRef.current.sync;
+    if (s.pending) return runScan(s.pending);
     const after = s.scannedTo ? addDays(s.scannedTo, -3) : addMonths(todayIso(), -12);
     return runScan({ after });
   }, [runScan]);
@@ -257,12 +220,15 @@ export function AppDataProvider({ children }) {
     [runScan],
   );
 
+  // Once per sign-in: resume an interrupted scan, or check for new mail if the last one is old.
+  const autoSynced = useRef(null);
   useEffect(() => {
-    if (!email || !session.access?.gmail || dataState.status !== 'ready') return;
-    const last = Date.parse(storeRef.current.sync.lastScanAt ?? '') || 0;
-    if (Date.now() - last > SCAN_STALE_MS) syncNow();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email, session.access?.gmail, dataState.status]);
+    if (!email || !session.access?.gmail || dataState.status !== 'ready' || autoSynced.current === email) return;
+    autoSynced.current = email;
+    const s = storeRef.current.sync;
+    const last = Date.parse(s.lastScanAt ?? '') || 0;
+    if (s.pending || Date.now() - last > SCAN_STALE_MS) syncNow();
+  }, [email, session.access?.gmail, dataState.status, syncNow]);
 
   // ── Derived views ─────────────────────────────────────────────────────
   const today = todayIso();
@@ -343,17 +309,14 @@ export function AppDataProvider({ children }) {
         URL.revokeObjectURL(a.href);
       },
       deleteAllData: async () => {
-        if (session.access?.drive) await api('data', { method: 'DELETE' });
-        versionRef.current = null;
+        if (email) await deleteData(email);
         const empty = emptyStore();
         storeRef.current = empty;
         setStore(empty);
-        if (email) writeCache(email, empty);
-        dirtyRef.current = false;
-        toast.success('All Recundle data was deleted.');
+        toast.success('All Recundle data on this device was deleted.');
       },
     }),
-    [update, session.access?.drive, email],
+    [update, email],
   );
 
   const value = {
@@ -373,7 +336,6 @@ export function AppDataProvider({ children }) {
     todos,
     today,
     actions,
-    saveNow: save,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

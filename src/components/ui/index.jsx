@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { animate, AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -10,7 +10,8 @@ export function Icon({ name, size = 18, className, ...props }) {
 }
 
 const BUTTON = {
-  primary: 'bg-primary text-primary-ink hover:brightness-110',
+  primary: 'bg-primary text-primary-ink hover:opacity-90',
+  brand: 'bg-brand text-brand-ink hover:opacity-90',
   secondary: 'border border-line bg-surface text-ink hover:border-ink/30',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   outline: 'border border-line bg-surface text-ink hover:bg-surface-2',
@@ -37,9 +38,18 @@ export function Button({ variant = 'primary', size = 'md', icon, iconRight, clas
   );
 }
 
-export function Card({ className, children, as: Tag = 'section', ...props }) {
+export function Card({ className, children, as, ...props }) {
+  const reduce = useReducedMotion();
+  const Tag = as ? motion.create(as) : motion.section;
   return (
-    <Tag className={cn('card min-w-0 p-4 sm:p-5', className)} {...props}>
+    <Tag
+      initial={reduce ? false : { opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-30px' }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className={cn('card min-w-0 p-4 sm:p-6', className)}
+      {...props}
+    >
       {children}
     </Tag>
   );
@@ -50,7 +60,7 @@ export function CardHead({ title, subtitle, action, icon }) {
     <div className="mb-4 flex items-start justify-between gap-3">
       <div className="min-w-0">
         <h2 className="flex items-center gap-2 text-[17px] font-medium">
-          {icon && <Icon name={icon} size={18} className="text-ink-2" />}
+          {icon && <Icon name={icon} size={18} className="text-brand" />}
           {title}
         </h2>
         {subtitle && <p className="mt-0.5 text-[13px] text-ink-3">{subtitle}</p>}
@@ -71,41 +81,76 @@ const TONES = {
 
 export function Badge({ tone = 'muted', icon, children, className }) {
   return (
-    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] font-semibold leading-tight', TONES[tone], className)}>
+    <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold uppercase leading-tight tracking-[0.04em]', TONES[tone], className)}>
       {icon && <Icon name={icon} size={12} />}
       {children}
     </span>
   );
 }
 
+/** Counts a formatted figure ("₹1,24,838", "+₹4,562", "17%", "12") up from zero when it scrolls into view. */
+export function CountUp({ value }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  const reduce = useReducedMotion();
+  const m = typeof value === 'string' || typeof value === 'number' ? String(value).match(/^([^\d]*?)([\d,]+(?:\.\d+)?)(.*)$/) : null;
+  const target = m ? Number(m[2].replace(/,/g, '')) : null;
+  const [shown, setShown] = useState(reduce || target == null ? value : `${m[1]}0${m[3]}`);
+  useEffect(() => {
+    if (!m || reduce) {
+      setShown(value);
+      return undefined;
+    }
+    if (!inView) return undefined;
+    const decimals = m[2].includes('.') ? m[2].split('.')[1].length : 0;
+    const fmt = (n) => (m[2].includes(',') ? n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : n.toFixed(decimals));
+    const controls = animate(0, target, { duration: 0.9, ease: [0.22, 1, 0.36, 1], onUpdate: (n) => setShown(`${m[1]}${fmt(n)}${m[3]}`) });
+    return () => controls.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, inView]);
+  return <span ref={ref}>{shown}</span>;
+}
+
 /** A headline number. `onClick` makes the whole tile a button that drills into the detail. */
 export function Tile({ label, value, sub, icon, tone, onClick, emphasis, className }) {
-  const Tag = onClick ? 'button' : 'div';
+  const Tag = onClick ? motion.button : motion.div;
   return (
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={cn('card group flex min-w-0 flex-col p-4 text-left transition', onClick && 'cursor-pointer hover:border-ink/40', emphasis && 'border-ink/30', className)}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(
+        'card group relative flex min-w-0 flex-col p-4 text-left transition-[transform,box-shadow,border-color] duration-200 sm:p-5',
+        onClick && 'cursor-pointer hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-ink hover:shadow-[4px_4px_0_0_var(--ink)]',
+        emphasis && 'border-brand/60',
+        className,
+      )}
     >
+      {emphasis && <span className="absolute inset-x-0 top-0 h-[3px] bg-brand" aria-hidden="true" />}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[12.5px] font-medium text-ink-2">{label}</span>
+        <span className="text-[11.5px] font-medium uppercase tracking-[0.08em] text-ink-3">{label}</span>
         {icon && (
-          <span className={cn('flex size-7 items-center justify-center rounded-lg', tone ? TONES[tone] : 'bg-surface-2 text-ink-2')}>
+          <span className={cn('flex size-7 items-center justify-center rounded border', tone ? cn(TONES[tone], 'border-transparent') : 'border-line text-ink-2')}>
             <Icon name={icon} size={15} />
           </span>
         )}
       </div>
-      <div className="tnum mt-1.5 truncate font-display text-[23px] font-medium leading-tight tracking-tight sm:text-[26px]">{value}</div>
-      {sub && <div className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-[12.5px] text-ink-3">{sub}</div>}
+      <div className="tnum mt-2 truncate font-display text-[24px] font-medium leading-tight tracking-tight sm:text-[28px]">
+        <CountUp value={value} />
+      </div>
+      {sub && <div className="mt-1 flex min-w-0 items-center gap-1 truncate text-[12.5px] text-ink-3">{sub}</div>}
+      {onClick && <Icon name="ArrowUpRight" size={14} className="absolute bottom-4 right-4 text-ink-3 opacity-0 transition group-hover:opacity-100" />}
     </Tag>
   );
 }
 
-/** Pills with a sliding highlight. */
+/** Template-style tabs: plain labels on a hairline, with a sliding underline under the active one. */
 export function Segmented({ options, value, onChange, label, size = 'md', className, id }) {
   const lid = useId();
   return (
-    <div role="group" aria-label={label} className={cn('scrollbar-none flex max-w-full gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1', className)}>
+    <div role="group" aria-label={label} className={cn('scrollbar-none flex max-w-full gap-5 overflow-x-auto border-b border-line', size === 'sm' && 'gap-4', className)}>
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -114,14 +159,14 @@ export function Segmented({ options, value, onChange, label, size = 'md', classN
             type="button"
             aria-pressed={active}
             onClick={() => onChange(o.value)}
-            className={cn('relative shrink-0 rounded-lg font-medium transition-colors', size === 'sm' ? 'px-2.5 py-1 text-[12.5px]' : 'px-3 py-1.5 text-[13.5px]', active ? 'text-ink' : 'text-ink-2 hover:text-ink')}
+            className={cn('relative shrink-0 pb-2.5 pt-1 font-medium transition-colors', size === 'sm' ? 'text-[13px]' : 'text-[14px]', active ? 'text-ink' : 'text-ink-3 hover:text-ink')}
           >
-            {active && <motion.span layoutId={id ?? lid} className="absolute inset-0 rounded-lg bg-surface shadow-sm" transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }} />}
-            <span className="relative inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5">
               {o.icon && <Icon name={o.icon} size={14} />}
               {o.label}
-              {o.count != null && <span className="tnum text-ink-3">{o.count}</span>}
+              {o.count != null && <span className={cn('tnum rounded-sm px-1 text-[11px]', active ? 'bg-accent text-accent-ink' : 'bg-surface-2 text-ink-3')}>{o.count}</span>}
             </span>
+            {active && <motion.span layoutId={id ?? lid} className="absolute inset-x-0 -bottom-px h-[2px] bg-brand" transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }} />}
           </button>
         );
       })}
@@ -195,7 +240,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, wide }
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/35" onClick={onClose} />
+          <div className="absolute inset-0 bg-[#18102b]/45 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             ref={ref}
             tabIndex={-1}
@@ -207,7 +252,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, wide }
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: 'spring', bounce: 0.1, duration: 0.35 }}
             className={cn(
-              'absolute inset-x-0 bottom-0 flex max-h-[92svh] flex-col rounded-t-2xl bg-surface shadow-2xl outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-full sm:rounded-none',
+              'absolute inset-x-0 bottom-0 flex max-h-[92svh] flex-col rounded-t-lg border-t border-line bg-surface outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-full sm:rounded-none sm:border-l sm:border-t-0',
               wide ? 'sm:max-w-2xl' : 'sm:max-w-lg',
             )}
           >
@@ -237,7 +282,7 @@ export function Dialog({ open, onClose, title, children, footer }) {
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+          <div className="absolute inset-0 bg-[#18102b]/45 backdrop-blur-[2px]" onClick={onClose} />
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -245,7 +290,7 @@ export function Dialog({ open, onClose, title, children, footer }) {
             initial={{ scale: 0.97, y: 12 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.97, y: 12, opacity: 0 }}
-            className="relative w-full max-w-md rounded-t-2xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl"
+            className="relative w-full max-w-md rounded-t-lg border border-ink bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[6px_6px_0_0_var(--ink)] sm:rounded-md"
           >
             <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
             <div className="mt-3 text-[14px] text-ink-2">{children}</div>
@@ -311,7 +356,7 @@ export function PageHeader({ title, subtitle, actions, children }) {
   return (
     <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-[30px] font-medium leading-tight sm:text-[38px]">{title}</h1>
+        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-[32px] font-medium leading-[1.05] sm:text-[44px]">{title}</motion.h1>
         {subtitle && <p className="mt-1 text-[14px] text-ink-2">{subtitle}</p>}
         {children}
       </div>
@@ -323,7 +368,7 @@ export function PageHeader({ title, subtitle, actions, children }) {
 export function Progress({ value, className, tone = 'primary' }) {
   return (
     <div className={cn('h-2 w-full overflow-hidden rounded-full bg-surface-2', className)} role="progressbar" aria-valuenow={Math.round((value ?? 0) * 100)} aria-valuemin={0} aria-valuemax={100}>
-      <motion.div className={cn('h-full rounded-full', tone === 'primary' ? 'bg-primary' : tone === 'good' ? 'bg-good' : 'bg-warn')} initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(1, value ?? 0)) * 100}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
+      <motion.div className={cn('h-full rounded-full', tone === 'primary' ? 'bg-brand' : tone === 'good' ? 'bg-good' : 'bg-warn')} initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(1, value ?? 0)) * 100}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
     </div>
   );
 }

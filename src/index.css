@@ -2,107 +2,116 @@
 @import '@fontsource-variable/space-grotesk';
 @import '@fontsource-variable/inter';
 
-/* Look: the Aoutive template's monochrome, framed layout (thin rails, crosshair marks, square corners,
-   Space Grotesk headings, Inter text). Recundle teal (#4DAAA7 / #3F8F8B) stays as a small accent and in charts. */
+/* Quantus palette: Electric Violet #834DFB, Turbo #F0E100, Haiti #18102B, Blue Chalk #F5F3FF.
+   Layout and motion follow the Aoutive template: framed rails, hairlines with + marks, square corners,
+   Space Grotesk headings, scroll-driven reveals. Chart colours are validated for colour-blind readers. */
 :root {
-  --bg: #fcfcfc;
+  --bg: #f5f3ff;
   --surface: #ffffff;
-  --surface-2: #f4f4f4;
-  --ink: #1a1a1a;
-  --ink-2: #5c5c5c;
-  --ink-3: #737373;
-  --line: #e6e6e6;
-  --primary: #1a1a1a;
-  --primary-ink: #ffffff;
-  --primary-soft: #f0f0f0;
-  --brand: #3f8f8b;
-  --brand-soft: #e6f2f1;
+  --surface-2: #ece8fb;
+  --ink: #18102b;
+  --ink-2: #4f4766;
+  --ink-3: #6c6485;
+  --line: #e2dcf5;
+  --primary: #18102b;
+  --primary-ink: #f5f3ff;
+  --primary-soft: #ece8fb;
+  --brand: #834dfb;
+  --brand-ink: #ffffff;
+  --brand-soft: #ede5ff;
+  --accent: #f0e100;
+  --accent-ink: #18102b;
   --good: #1f7a4d;
-  --good-soft: #e6f4ec;
-  --warn: #9a5b00;
-  --warn-soft: #fbf1df;
-  --bad: #b42318;
-  --bad-soft: #fdeceb;
-  --info: #2a6fb8;
-  --info-soft: #e8f0fa;
-  /* Charts (validated for colour-vision deficiency) */
-  --viz-in: #0f918a;
-  --viz-out: #eb6834;
-  --viz-1: #2a78d6;
+  --good-soft: #e3f4ea;
+  --warn: #8a5a00;
+  --warn-soft: #fbf3d6;
+  --bad: #c0262d;
+  --bad-soft: #fdeaea;
+  --info: #5b33d6;
+  --info-soft: #ede5ff;
+  --viz-in: #834dfb;
+  --viz-out: #b08600;
+  --viz-1: #834dfb;
   --viz-2: #eb6834;
   --viz-3: #1baf7a;
   --viz-4: #eda100;
   --viz-5: #e87ba4;
-  --viz-other: #a3a3a3;
-  --viz-grid: #ececec;
+  --viz-other: #a49dbb;
+  --viz-grid: #ebe7f7;
   --shadow: none;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0e0e0e;
-    --surface: #161616;
-    --surface-2: #212121;
-    --ink: #f2f2f2;
-    --ink-2: #b0b0b0;
-    --ink-3: #8c8c8c;
-    --line: #2a2a2a;
-    --primary: #f2f2f2;
-    --primary-ink: #111111;
-    --primary-soft: #262626;
-    --brand: #4daaa7;
-    --brand-soft: #1b3332;
+    --bg: #18102b;
+    --surface: #211838;
+    --surface-2: #2c2247;
+    --ink: #f5f3ff;
+    --ink-2: #cbc4e0;
+    --ink-3: #a199bd;
+    --line: #382c57;
+    --primary: #f0e100;
+    --primary-ink: #18102b;
+    --primary-soft: #2c2247;
+    --brand: #9a6dff;
+    --brand-ink: #18102b;
+    --brand-soft: #2e2150;
+    --accent: #f0e100;
+    --accent-ink: #18102b;
     --good: #5cc490;
     --good-soft: #17291f;
-    --warn: #e8b04c;
-    --warn-soft: #2e2615;
-    --bad: #f0857a;
-    --bad-soft: #321b19;
-    --info: #7fb2ec;
-    --info-soft: #18222f;
-    --viz-in: #1aa59d;
-    --viz-out: #d95926;
-    --viz-1: #3987e5;
+    --warn: #f0d24c;
+    --warn-soft: #332a12;
+    --bad: #ff8a85;
+    --bad-soft: #3a1a22;
+    --info: #b79bff;
+    --info-soft: #2e2150;
+    --viz-in: #9a6dff;
+    --viz-out: #a08f00;
+    --viz-1: #9a6dff;
     --viz-2: #d95926;
     --viz-3: #199e70;
     --viz-4: #c98500;
     --viz-5: #d55181;
-    --viz-other: #6b6b6b;
-    --viz-grid: #262626;
+    --viz-other: #6f6690;
+    --viz-grid: #2f2549;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #0e0e0e;
-  --surface: #161616;
-  --surface-2: #212121;
-  --ink: #f2f2f2;
-  --ink-2: #b0b0b0;
-  --ink-3: #8c8c8c;
-  --line: #2a2a2a;
-  --primary: #f2f2f2;
-  --primary-ink: #111111;
-  --primary-soft: #262626;
-  --brand: #4daaa7;
-  --brand-soft: #1b3332;
+  --bg: #18102b;
+  --surface: #211838;
+  --surface-2: #2c2247;
+  --ink: #f5f3ff;
+  --ink-2: #cbc4e0;
+  --ink-3: #a199bd;
+  --line: #382c57;
+  --primary: #f0e100;
+  --primary-ink: #18102b;
+  --primary-soft: #2c2247;
+  --brand: #9a6dff;
+  --brand-ink: #18102b;
+  --brand-soft: #2e2150;
+  --accent: #f0e100;
+  --accent-ink: #18102b;
   --good: #5cc490;
   --good-soft: #17291f;
-  --warn: #e8b04c;
-  --warn-soft: #2e2615;
-  --bad: #f0857a;
-  --bad-soft: #321b19;
-  --info: #7fb2ec;
-  --info-soft: #18222f;
-  --viz-in: #1aa59d;
-  --viz-out: #d95926;
-  --viz-1: #3987e5;
+  --warn: #f0d24c;
+  --warn-soft: #332a12;
+  --bad: #ff8a85;
+  --bad-soft: #3a1a22;
+  --info: #b79bff;
+  --info-soft: #2e2150;
+  --viz-in: #9a6dff;
+  --viz-out: #a08f00;
+  --viz-1: #9a6dff;
   --viz-2: #d95926;
   --viz-3: #199e70;
   --viz-4: #c98500;
   --viz-5: #d55181;
-  --viz-other: #6b6b6b;
-  --viz-grid: #262626;
-  color-scheme: dark;
+  --viz-other: #6f6690;
+  --viz-grid: #2f2549;
+    color-scheme: dark;
 }
 
 @theme inline {
@@ -114,6 +123,9 @@
   --radius-xl: 0.3125rem;
   --radius-2xl: 0.375rem;
   --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
@@ -258,4 +270,47 @@ h3,
 .iso {
   transform: rotateX(54deg) rotateZ(-42deg);
   transform-style: preserve-3d;
+}
+
+/* Template motion: flowing dashed connectors and an endless marquee. */
+.flow-line {
+  background: repeating-linear-gradient(90deg, var(--brand) 0 6px, transparent 6px 12px);
+  background-size: 24px 1px;
+  animation: flow 1.2s linear infinite;
+}
+@keyframes flow {
+  to {
+    background-position: 24px 0;
+  }
+}
+.marquee {
+  animation: marquee 38s linear infinite;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-line,
+  .marquee,
+  .float {
+    animation: none;
+  }
 }
