@@ -87,7 +87,7 @@ export default function Loans() {
       {loans.length === 0 ? (
         <Card>
           <Empty icon="Landmark" title="No loans found">
-            Recundle looks in Gmail for sanction letters, EMI receipts and reminders, statements, foreclosure quotes, closure letters and NOCs. You can also add a loan yourself.
+            Add your loans with their balance, EMI and rate from the lender's statement or app. EMI payments in your PhonePe statements can then be linked to each loan from Expenses.
           </Empty>
         </Card>
       ) : (
@@ -98,14 +98,11 @@ export default function Loans() {
             <Tile label="EMIs every month" value={inr(totals.emi)} icon="CalendarClock" sub={totals.emiKnownFor < totals.active ? `Known for ${totals.emiKnownFor} of ${totals.active}` : 'All active loans'} />
             <Tile label="Monthly debt obligation" value={income > 0 ? pct(totals.emi / income) : inr(totals.emi)} icon="Percent" sub={income > 0 ? `of your average income (${inr(Math.round(income))})` : 'Add income to compare'} tone={income > 0 && totals.emi / income > 0.4 ? 'warn' : undefined} />
             <Tile label="Longest remaining" value={totals.longest ? monthsToWords(totals.longest) : '—'} icon="Hourglass" sub={totals.longest ? `Until about ${shortDate(addMonths(today, totals.longest), true)} (est.)` : 'Needs balance, EMI and rate'} />
-            <Tile label="To verify" value={totals.verify} icon="CircleHelp" tone={totals.verify ? 'warn' : undefined} sub="Found in Gmail, not confirmed" />
-            <Tile label="Can be closed" value={totals.closable} icon="FileCheck2" tone={totals.closable ? 'good' : undefined} sub="NOC or closure email found" />
-            <Tile label="Unmatched closure emails" value={unmatchedLoanEmails.length} icon="FileQuestion" sub="Assign them to a loan" />
           </div>
 
           {discovered.length > 0 && (
             <Card className="border-warn/40">
-              <CardHead title="Found in your Gmail: are these your loans?" subtitle="Confirm to track them. Nothing is counted until you do." icon="Search" />
+              <CardHead title="Found: are these your loans?" subtitle="Confirm to track them. Nothing is counted until you do." icon="Search" />
               <ul className="divide-y divide-line">
                 {discovered.map((l) => (
                   <li key={l.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
@@ -371,7 +368,7 @@ function LoanSheet({ loan, onClose }) {
               <>
                 <p className="flex items-center gap-2 font-semibold text-warn"><Icon name="FileQuestion" size={17} /> NOC not identified — loan closure status requires verification.</p>
                 {loan.closure && <p className="mt-1 text-ink-2">A closure email was found ({shortDate(loan.closure.date, true)}), but no NOC. <GmailLink messageId={loan.closure.messageId} email={session.user?.email}>Open it</GmailLink></p>}
-                <p className="mt-1 text-ink-2">Not finding an NOC in Gmail doesn't mean the loan is unpaid. Ask the lender for the NOC and keep it safe.</p>
+                <p className="mt-1 text-ink-2">No NOC on record doesn't mean the loan is unpaid. Ask the lender for the NOC and keep it safe.</p>
               </>
             )}
           </div>
@@ -448,7 +445,7 @@ function LoanSheet({ loan, onClose }) {
         title={`Mark ${loan.lender} as closed?`}
         footer={<><Button variant="ghost" onClick={() => setClosing(false)}>Cancel</Button><Button onClick={() => { setStatus('closed'); setClosing(false); }}>Mark closed</Button></>}
       >
-        {loan.noc ? 'Make sure the NOC names this loan account and confirms nothing is due.' : 'No NOC was found in Gmail for this loan. Mark it closed only if you have confirmation from the lender; it will show "NOC not found" until one is added.'} It stops counting towards your outstanding debt and EMIs, and its history is kept.
+        {loan.noc ? 'Make sure the NOC names this loan account and confirms nothing is due.' : 'No NOC is on record for this loan. Mark it closed only if you have confirmation from the lender; it will show "NOC not found" until one is added.'} It stops counting towards your outstanding debt and EMIs, and its history is kept.
       </Dialog>
       <Dialog
         open={removing}
@@ -456,7 +453,7 @@ function LoanSheet({ loan, onClose }) {
         title={loan.discovered ? 'Not your loan?' : `Remove ${loan.lender}?`}
         footer={<><Button variant="ghost" onClick={() => setRemoving(false)}>Cancel</Button><Button variant="danger" onClick={() => { actions.deleteLoan(loan); setRemoving(false); onClose(); toast.success('Removed'); }}>Remove</Button></>}
       >
-        The emails it was found from won't be shown as a loan again. Payments stay in Expenses.
+        It won't be shown as a loan again. Payments stay in Expenses.
       </Dialog>
     </>
   );

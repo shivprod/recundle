@@ -1,19 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyStore, ingestEvents, putRecord } from '../src/core/store.js';
+import { editTransaction, emptyStore, ingestEvents, putRecord } from '../src/core/store.js';
 import { buildTransactions } from '../src/core/transactions.js';
 import { deriveSubscriptions, subscriptionTotals } from '../src/core/subscriptions.js';
 import { balanceAfter, deriveLoans, emiFor, monthsToRepay, repaymentPlan, simulate, loanRecordFrom } from '../src/core/loans.js';
 
 // All data here is made up.
 const TODAY = '2026-10-20';
-const receipt = (id, date, amount, extra = {}) => ({ kind: 'txn', source: 'gmail-receipt', messageId: id, date, direction: 'out', amount, counterparty: 'Netflix', subscription: { isSubscription: true, known: true, service: 'Netflix', period: 'monthly', ...extra } });
+const row = (id, date, amount) => ({ kind: 'txn', source: 'phonepe', rowId: `pp:${id}`, date, direction: 'out', amount, counterparty: 'Netflix Com', method: 'UPI' });
+const linked = (events) => {
+  let s = ingestEvents(emptyStore(), events, 'statement');
+  for (const e of events) s = editTransaction(s, e.rowId, { subscription: 'Netflix' });
+  return s;
+};
 
-test('one receipt alone needs verification; two on schedule make it active', () => {
-  let s = ingestEvents(emptyStore(), [receipt('n1', '2026-10-02', 649_00)]);
+test('payments you link to a subscription: active once paid on schedule, with price changes', () => {
+  let s = linked([row('n1', '2026-10-02', 649_00)]);
   let [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);
-  assert.equal(sub.status, 'needs_verification');
-  s = ingestEvents(s, [receipt('n0', '2026-09-02', 499_00)]);
+  assert.equal(sub.name, 'Netflix');
+  s = linked([row('n0', '2026-09-02', 499_00), row('n1', '2026-10-02', 649_00)]);
   [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);
   assert.equal(sub.status, 'active');
   assert.equal(sub.monthly, 649_00);
@@ -22,18 +27,16 @@ test('one receipt alone needs verification; two on schedule make it active', () 
   assert.deepEqual(sub.priceChanges.map((c) => [c.from, c.to]), [[499_00, 649_00]]);
 });
 
-test('a cancellation email after the last payment cancels; the user can override; inactive is not counted', () => {
-  let s = ingestEvents(emptyStore(), [receipt('n0', '2026-09-02', 649_00), receipt('n1', '2026-10-02', 649_00), { kind: 'sub', messageId: 'c1', date: '2026-10-05', status: 'cancelled', service: 'Netflix', isSubscription: true }]);
-  let [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);
+test('a subscription you mark cancelled keeps its history but is not counted', () => {
+  let s = linked([row('n0', '2026-09-02', 649_00), row('n1', '2026-10-02', 649_00)]);
+  s = putRecord(s, 'subscriptions', { id: 'netflix', status: 'cancelled' });
+  const [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);
   assert.equal(sub.status, 'cancelled');
-  assert.equal(subscriptionTotals([sub], TODAY).monthly, 0);
-  s = putRecord(s, 'subscriptions', { id: 'netflix', status: 'active' });
-  [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);
-  assert.equal(sub.status, 'active');
   assert.equal(sub.payments.length, 2);
+  assert.equal(subscriptionTotals([sub], TODAY).monthly, 0);
 });
 
-test('regular payments without a receipt are a candidate, not a confirmed subscription', () => {
+test('regular payments to the same payee are a candidate, not a confirmed subscription', () => {
   const pay = (id, date) => ({ kind: 'txn', source: 'phonepe', rowId: `pp:${id}`, messageId: 'stmt', date, direction: 'out', amount: 299_00, counterparty: 'Gym Studio Pvt Ltd', method: 'Card' });
   const s = ingestEvents(emptyStore(), [pay('g1', '2026-07-05'), pay('g2', '2026-08-05'), pay('g3', '2026-09-05'), pay('g4', '2026-10-05')]);
   const [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);

@@ -8,14 +8,14 @@ import { live } from './store.js';
  *   1. what the user set on this transaction
  *   2. the user's classification rule for this payee
  *   3. Recundle's own guess (with a confidence)
- * Duplicates (the same payment seen in a bank alert and a receipt, or in Gmail and a statement)
+ * Duplicates (the same payment in a PhonePe statement and a CSV bank statement)
  * are folded into one transaction so nothing is counted twice.
  */
 
-const SOURCE_RANK = { phonepe: 0, statement: 1, 'gmail-alert': 2, 'gmail-loan': 3, 'gmail-receipt': 4, manual: 5 };
+const SOURCE_RANK = { phonepe: 0, statement: 1, manual: 2 };
 const STATEMENT_KINDS = new Set(['phonepe', 'statement']);
-/** Emails that describe a payment but are not a source of money movements on their own. */
-const EVIDENCE_KINDS = new Set(['gmail-receipt', 'gmail-loan']);
+/** Where transactions come from: PhonePe statements in Drive, CSV statements you add, and your own entries. */
+const SOURCES = new Set(['phonepe', 'statement', 'manual']);
 const sourceKind = (t) => (t.source === 'gmail' ? t.raw.source : t.source);
 
 /** The rule (if any) that applies to a raw transaction. */
@@ -58,19 +58,14 @@ export function findDuplicates(records) {
   return dupes;
 }
 
-/** Display name for the payee: the user's, a rule's, a receipt's brand name, or the bank's text. */
-function pickName(t, rule, partner) {
-  return t.user?.counterparty ?? rule?.set?.counterparty ?? (partner && sourceKind(partner) === 'gmail-receipt' ? partner.raw.counterparty : null) ?? t.raw.counterparty ?? t.raw.vpa ?? (t.raw.description ? t.raw.description.slice(0, 40) : null) ?? 'Unknown payee';
+/** Display name for the payee: the user's, a rule's, or the statement's text. */
+function pickName(t, rule) {
+  return t.user?.counterparty ?? rule?.set?.counterparty ?? t.raw.counterparty ?? t.raw.vpa ?? (t.raw.description ? t.raw.description.slice(0, 40) : null) ?? 'Unknown payee';
 }
 
-/**
- * Expenses come from PhonePe statements (plus statements you import and payments you add). Receipts
- * and lender emails are matched to those rows and lend them their details; an email with no matching
- * row is returned with `evidence: true`, so Subscriptions and Loans can still use it while Expenses
- * leave it out. Bank alerts read by earlier versions are ignored.
- */
+/** Transactions from PhonePe statements, CSV statements and manual entries. Anything else stored by older versions is ignored. */
 export function buildTransactions(store, { ownNames = [] } = {}) {
-  const records = live(store.txns).filter((t) => t.raw?.amount > 0 && t.raw?.date && sourceKind(t) !== 'gmail-alert');
+  const records = live(store.txns).filter((t) => t.raw?.amount > 0 && t.raw?.date && SOURCES.has(sourceKind(t)));
   const rules = live(store.rules);
   const dupes = findDuplicates(records);
   const partners = new Map();
@@ -84,19 +79,17 @@ export function buildTransactions(store, { ownNames = [] } = {}) {
   for (const t of records) {
     if (dupes.has(t.id)) continue;
     const linked = (partners.get(t.id) ?? []).map((id) => byId.get(id));
-    const receipt = linked.find((x) => sourceKind(x) === 'gmail-receipt');
-    // A receipt merged into a bank alert lends its subscription facts and loan hints.
-    const raw = { ...t.raw, subscription: t.raw.subscription ?? receipt?.raw.subscription ?? null, loanHint: t.raw.loanHint ?? linked.find((x) => x.raw.loanHint)?.raw.loanHint ?? null };
+    const raw = { ...t.raw, subscription: t.raw.subscription ?? null, loanHint: t.raw.loanHint ?? null };
     const key = entityKey(t.user?.counterparty ?? raw.counterparty ?? raw.vpa ?? '');
     const rawKey = entityKey(raw.counterparty ?? raw.vpa ?? '');
     const rule = matchRule(raw, rawKey, rules) ?? (key !== rawKey ? matchRule(raw, key, rules) : null);
-    const guess = guessCategory({ ...raw, counterparty: receipt?.raw.counterparty ?? raw.counterparty }, { ownNames: own });
+    const guess = guessCategory(raw, { ownNames: own });
     const u = t.user ?? {};
     const pick = (field) => (u[field] !== undefined ? 'user' : rule?.set?.[field] !== undefined ? 'rule' : 'auto');
     const value = (field, auto) => (u[field] !== undefined ? u[field] : rule?.set?.[field] !== undefined ? rule.set[field] : auto);
     const category = value('category', guess.category);
     const classifiedBy = pick('category') === 'user' || pick('type') === 'user' ? 'user' : rule ? 'rule' : 'auto';
-    const counterparty = pickName(t, rule, receipt);
+    const counterparty = pickName(t, rule);
     const type = value('type', guess.type);
     out.push({
       id: t.id,
@@ -129,7 +122,6 @@ export function buildTransactions(store, { ownNames = [] } = {}) {
       confidence: classifiedBy === 'user' ? 1 : rule ? 0.95 : guess.confidence,
       reason: classifiedBy === 'user' ? 'You set this' : rule ? `Your rule for ${rule.label ?? counterparty}` : guess.reason,
       excluded: Boolean(u.excluded),
-      evidence: EVIDENCE_KINDS.has(sourceKind(t)),
       matched: linked.length > 0,
       rawCounterparty: raw.counterparty ?? null,
       rawKey,

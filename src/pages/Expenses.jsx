@@ -37,7 +37,7 @@ function useParamState() {
 }
 
 export default function Expenses() {
-  const { txns, store, subscriptions, today, session, scan, syncNow } = useApp();
+  const { txns, store, subscriptions, today, session, drive, syncNow, signIn } = useApp();
   const [get, set] = useParamState();
   const tab = get('tab', 'overview');
   // PhonePe statements arrive after a month ends: until this month has rows, open on the previous month.
@@ -75,15 +75,19 @@ export default function Expenses() {
       {header}
       {!hasData ? (
         <Card>
-          <Empty icon={scan.running ? 'LoaderCircle' : 'Wallet'} title={scan.running ? `Reading your Gmail… ${scan.scanned} emails checked` : 'No transactions yet'}>
-            {scan.running
-              ? 'PhonePe monthly statements, receipts and loan emails are being read. Transactions appear here as they are found.'
-              : session.access?.gmail
-                ? 'Expenses come from your PhonePe monthly statement emails. None were found yet: check that PhonePe emails you a monthly statement, or add a statement PDF downloaded from the PhonePe app.'
-                : 'Gmail access was not granted. Add a PhonePe statement PDF, or sign in again and allow Gmail.'}
+          <Empty icon={drive.running ? 'LoaderCircle' : 'FolderOpen'} title={drive.running ? (drive.total ? `Reading your statements… ${drive.read} of ${drive.total}` : 'Checking your Google Drive…') : 'No transactions yet'}>
+            {drive.running
+              ? 'PhonePe statement PDFs in your "Phone Pe - Monthly Statement" folder are being read. Transactions appear here as they are found.'
+              : !session.access?.drive
+                ? 'Expenses come from the PhonePe statement PDFs in your Google Drive folder "Phone Pe - Monthly Statement". Allow read-only Drive access so Recundle can read them.'
+                : drive.error
+                  ? `Couldn't read Google Drive: ${drive.error}`
+                  : drive.folders === 0
+                    ? 'No folder named "Phone Pe - Monthly Statement" was found in your Google Drive. Create it (or rename yours) and put the PhonePe statement PDFs in it, then sync.'
+                    : `The "Phone Pe - Monthly Statement" folder has ${drive.files ?? 0} PDF${drive.files === 1 ? '' : 's'}, but no transactions could be read from them. Check Settings → PhonePe statements; locked PDFs need the statement password.`}
           </Empty>
           <div className="flex flex-wrap justify-center gap-2 pb-4">
-            {session.access?.gmail && !scan.running && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Gmail</Button>}
+            {!session.access?.drive ? <Button icon="FolderOpen" onClick={() => signIn().catch((e) => e.code !== 'popup_closed' && toast.error(e.message))}>Allow Google Drive</Button> : !drive.running && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Drive</Button>}
             <Button variant="outline" icon="FileUp" onClick={() => setImporting(true)}>Add statement PDF</Button>
           </div>
         </Card>

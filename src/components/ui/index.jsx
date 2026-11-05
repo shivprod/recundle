@@ -319,7 +319,7 @@ export function Empty({ icon = 'Inbox', title, children, action, className }) {
 
 /** Where a figure comes from. Estimates are never shown as official. */
 export const PROVENANCE = {
-  verified: { label: 'From lender email', tone: 'good', icon: 'BadgeCheck' },
+  verified: { label: 'From lender', tone: 'good', icon: 'BadgeCheck' },
   stated: { label: 'From receipt', tone: 'good', icon: 'BadgeCheck' },
   user: { label: 'Entered by you', tone: 'info', icon: 'UserPen' },
   estimated: { label: 'Estimated', tone: 'warn', icon: 'Calculator' },

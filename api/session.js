@@ -1,4 +1,3 @@
-import { aiAvailable } from '../server/ai.js';
 import { clientId, readSession, REQUESTED_SCOPES } from '../server/google.js';
 import { json, route } from '../server/http.js';
 
@@ -10,8 +9,7 @@ export const GET = route(async (req) => {
     configured,
     clientId: clientId(),
     scopes: REQUESTED_SCOPES,
-    ai: aiAvailable(),
     user: session ? { email: session.email, name: session.name, picture: session.picture } : null,
-    access: session ? { gmail: Boolean(session.gmail) } : null,
+    access: session ? { drive: Boolean(session.drive) } : null,
   });
 });

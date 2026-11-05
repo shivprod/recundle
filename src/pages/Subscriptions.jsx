@@ -73,11 +73,11 @@ export default function Subscriptions() {
 
   return (
     <div>
-      <PageHeader title="Subscriptions" subtitle="Recurring payments from your PhonePe statements, matched with subscription emails and receipts." actions={<Button variant="outline" size="sm" icon="Plus" onClick={() => setAdding(true)}>Add subscription</Button>} />
+      <PageHeader title="Subscriptions" subtitle="Recurring payments found in your PhonePe statements, plus any you add." actions={<Button variant="outline" size="sm" icon="Plus" onClick={() => setAdding(true)}>Add subscription</Button>} />
       {subscriptions.length === 0 ? (
         <Card>
           <Empty icon="Repeat" title="No subscriptions found yet">
-            Recundle looks for receipts, renewal notices, trials, failed payments and cancellations in Gmail, and for regular payments to the same payee. Sync Gmail, or open a transaction and link it to a subscription.
+            Recundle looks for regular payments to the same payee in your PhonePe statements. You can also add a subscription, or open a transaction and link it to one.
           </Empty>
         </Card>
       ) : (
@@ -179,7 +179,7 @@ function SubscriptionSheet({ sub, onClose }) {
         <Field label="Status">
           <Select value={sub.status} onChange={(e) => { actions.setSubscription(sub.key, { status: e.target.value === sub.autoStatus ? null : e.target.value }); toast.success(`Marked ${STATUSES[e.target.value].label.toLowerCase()}`); }}>
             {Object.entries(STATUSES).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}{k === sub.autoStatus ? ' (from emails)' : ''}</option>
+              <option key={k} value={k}>{v.label}{k === sub.autoStatus ? ' (automatic)' : ''}</option>
             ))}
           </Select>
         </Field>
@@ -286,7 +286,7 @@ function AddSubscription({ open, onClose }) {
   };
   return (
     <Dialog open={open} onClose={onClose} title="Add a subscription" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={!f.name.trim()}>Add</Button></>}>
-      <p className="mb-3">For subscriptions Gmail doesn't show. To link a payment you can see in Expenses, open that transaction instead.</p>
+      <p className="mb-3">For subscriptions your statements don't show (card or cash payments). To link a payment you can see in Expenses, open that transaction instead.</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Name" className="col-span-2"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Newspaper" /></Field>
         <Field label="Amount (₹)"><Input inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>

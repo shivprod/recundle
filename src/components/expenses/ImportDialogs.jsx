@@ -69,7 +69,7 @@ export function ImportStatementDialog({ open, onClose }) {
     <Dialog open={open} onClose={close} title="Add a statement" footer={<Button variant="ghost" onClick={close}>Done</Button>}>
       <div className="flex flex-col gap-3">
         <p>
-          Recundle reads your <b>PhonePe monthly statements</b> from Gmail automatically. For a month that isn't in Gmail, download the statement from the PhonePe app (History → Download statement) and choose the PDF here. It's read once and discarded; only the transactions are kept, on this device. The same statement never adds anything twice.
+          Recundle reads the PhonePe statements in your Google Drive folder <b>“Phone Pe - Monthly Statement”</b> automatically. To add one without putting it in Drive, download the statement from the PhonePe app (History → Download statement) and choose the PDF here. It's read once and discarded; only the transactions are kept, on this device. The same statement never adds anything twice.
         </p>
         {(needsPassword || !phonepePassword) && (
           <Field label="Statement password (if it has one)" hint="Used only to open this file; not saved here. Save it in Settings to read locked statements from Gmail.">
@@ -125,7 +125,7 @@ export function AddTransactionDialog({ open, onClose }) {
   };
   return (
     <Dialog open={open} onClose={onClose} title="Add a transaction" footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={submit} disabled={!amount || !f.counterparty.trim()}>Add</Button></>}>
-      <p className="mb-3">For cash or anything Gmail and your statements don't show.</p>
+      <p className="mb-3">For cash, card payments or anything your statements don't show.</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Money">
           <Select value={f.direction} onChange={set('direction')}>

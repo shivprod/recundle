@@ -3,7 +3,7 @@ import { uid } from './format.js';
 /**
  * The persisted shape. Each collection is a map of records with `updatedAt`; deletions are kept as
  * tombstones (`deleted: true`) so two devices can be merged record by record (newer wins).
- * `raw` fields come from Gmail or an imported statement and are never edited; everything the user
+ * `raw` fields come from a statement and are never edited; everything the user
  * changes lives in `user`, which always takes precedence.
  */
 export const COLLECTIONS = ['txns', 'subEvents', 'loanEvents', 'statements', 'rules', 'categories', 'subscriptions', 'loans', 'todos'];
@@ -15,7 +15,7 @@ export function emptyStore() {
     updatedAt: null,
     ...Object.fromEntries(COLLECTIONS.map((c) => [c, {}])),
     audit: [],
-    sync: { lastScanAt: null, scannedFrom: null, scannedTo: null, messages: 0 },
+    sync: { version: 3 },
   };
 }
 
@@ -49,13 +49,7 @@ export function mergeStores(a, b) {
     })
     .sort((x, y) => (x.at < y.at ? 1 : -1))
     .slice(0, 400);
-  out.sync = {
-    lastScanAt: [A.sync.lastScanAt, B.sync.lastScanAt].filter(Boolean).sort().pop() ?? null,
-    scannedFrom: [A.sync.scannedFrom, B.sync.scannedFrom].filter(Boolean).sort()[0] ?? null,
-    scannedTo: [A.sync.scannedTo, B.sync.scannedTo].filter(Boolean).sort().pop() ?? null,
-    messages: Math.max(A.sync.messages ?? 0, B.sync.messages ?? 0),
-    version: Math.min(A.sync.version ?? 1, B.sync.version ?? 1),
-  };
+  out.sync = { version: Math.min(A.sync.version ?? 1, B.sync.version ?? 1) };
   out.updatedAt = [A.updatedAt, B.updatedAt].filter(Boolean).sort().pop() ?? null;
   return out;
 }
@@ -99,7 +93,7 @@ export function editTransaction(store, id, fields) {
 }
 
 /**
- * Adds parsed Gmail events (or statement rows) to the store. Existing records keep their user edits;
+ * Adds statement rows (and statement records) to the store. Existing records keep their user edits;
  * events already stored are skipped so a rescan doesn't churn timestamps.
  */
 export function ingestEvents(store, events, source = 'gmail') {
@@ -124,6 +118,19 @@ export function ingestEvents(store, events, source = 'gmail') {
     else if (e.kind === 'loan') add('loanEvents', e.messageId, e);
   }
   return next;
+}
+
+/**
+ * Version 3 reads only Google Drive statements: anything earlier versions took from Gmail (alerts,
+ * receipts, subscription and loan emails, emailed statements) is removed. Your edits, rules,
+ * categories, loans, subscriptions you set up, to-dos and uploaded statements are kept.
+ */
+export function dropEmailData(store) {
+  if ((store.sync?.version ?? 1) >= 3) return store;
+  const txns = Object.fromEntries(Object.entries(store.txns).filter(([, t]) => t.source !== 'gmail' && !(t.source === 'phonepe' && t.raw?.messageId)));
+  const statements = Object.fromEntries(Object.entries(store.statements ?? {}).filter(([, x]) => !x.messageId));
+  const loans = Object.fromEntries(Object.entries(store.loans).map(([k, l]) => [k, { ...l, eventKeys: [] }]));
+  return { ...store, txns, statements, loans, subEvents: {}, loanEvents: {}, sync: { version: 3 } };
 }
 
 export function newRule({ keys, direction, set, amount = null, label }) {

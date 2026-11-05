@@ -10,7 +10,7 @@ export const POST = route(async (req) => {
   const session = await exchangeCode(code, readSession(req));
   if (!session.rt) throw new HttpError(400, 'no_refresh_token', 'Google did not grant offline access. Remove Recundle at myaccount.google.com/permissions and sign in again.');
   return json(
-    { user: { email: session.email, name: session.name, picture: session.picture }, access: { gmail: session.gmail } },
+    { user: { email: session.email, name: session.name, picture: session.picture }, access: { drive: Boolean(session.drive) } },
     200,
     { 'Set-Cookie': sessionCookie(session) },
   );

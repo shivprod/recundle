@@ -13,19 +13,16 @@ A **Home** dashboard brings the four together.
 
 ## Where the data comes from
 
-- **PhonePe monthly statements (the only source of expenses).** Recundle finds each *PhonePe – Monthly Statement* email in Gmail and reads the attached PDF. Every row (date, payee, debit or credit, amount, transaction ID, UTR, account) becomes a transaction. The transaction ID keeps a statement from being counted twice.
-  - Password-protected statements are opened with the password you save in **Settings → PhonePe statements**. It is kept only in your browser and sent only while opening the PDFs.
-  - For a month that isn't in Gmail yet, download the statement from the PhonePe app and add the PDF under **Expenses → Add statement**.
-  - Statements arrive after a month ends, so Home and Expenses open on the latest month with statement data until the current month has some.
-- **Gmail emails used for matching (read-only):**
-  - Merchant receipts and subscription emails (renewals, trials, failed payments, cancellations).
-  - Loan emails: sanction letters, disbursals, EMI receipts and reminders, statements, foreclosure quotes, closure letters and NOCs.
-
-  A receipt or lender email for the same amount within 3 days of a statement row is matched to it: it names the merchant, marks subscriptions and links EMIs to loans. An email with no matching row is still used by Subscriptions and Loans, but it is never counted as an expense. **Bank alerts are not read.**
-
-  PDFs and email bodies are read in memory on the server and discarded; only the parsed fields are kept.
-- **Bank statements (CSV)** can still be added; rows that also appear in a PhonePe statement are matched, not counted twice.
+- **PhonePe statements in your Google Drive (the only automatic source).** Save your PhonePe statement PDFs in a Drive folder named **“Phone Pe - Monthly Statement”** (subfolders such as one per year are fine). Recundle reads every PDF in that folder, and nothing else in your Drive. Each row (date, payee, debit or credit, amount, transaction ID, UTR, account) becomes a transaction, keyed by its PhonePe transaction ID so nothing is counted twice.
+  - New or changed files are read each time you open Recundle or press **Sync**; files already read are not downloaded again.
+  - Password-protected statements open with the password you save in **Settings → PhonePe statements**. It is kept only in your browser and sent only while opening the PDFs.
+  - A statement can also be added by hand under **Expenses → Add statement**.
+  - Statements cover whole months, so Home and Expenses open on the latest month with statement data until the current month has some.
+- **Gmail is not used.** Versions before November 2026 read Gmail; anything they stored from email is removed the first time this version opens.
+- **CSV bank statements** can still be added; a payment that is also in a PhonePe statement is counted once.
 - **You.** You can edit every field, add transactions, subscriptions and loans, and write your own to-dos.
+
+PDFs are read in memory on the server and discarded; only the rows are kept, on your device.
 
 ## Where the data lives
 
@@ -33,9 +30,9 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
 
 - **Signing out keeps your data** for next time. **Settings → Delete all my Recundle data** removes it.
 - **Back up or move your data:** use **Settings → Download a copy**.
-- **Each browser has its own copy.** A new browser starts empty and reads Gmail again.
+- **Each browser has its own copy.** A new browser starts empty and reads the Drive folder again.
 
-**Gmail sync saves as it goes.** Each page of results is saved with the scan's position. Reloading or switching screens resumes the scan where it stopped, and later syncs only read new mail.
+**Drive sync saves as it goes.** Statements are saved after every few files, so reloading mid-sync loses nothing, and later syncs read only new or changed files.
 
 ## Modules
 
@@ -62,8 +59,8 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
   - Possible duplicate charges.
   - Unusually large payments.
 - **Transactions:** search (name, UPI ID, reference, notes) and filters (direction, category, type, "to check").
-  - Each transaction shows where it came from, with links to the original emails.
-  - The same payment seen twice (statement row plus receipt, or PhonePe plus a CSV statement) is counted once.
+  - Each transaction shows where it came from (PhonePe statement, CSV statement or added by you).
+  - The same payment in a PhonePe statement and a CSV statement is counted once.
 - **Edit anything:**
   - Name, payee, type, category, subcategory, purpose, description and notes.
   - Link to a subscription or a loan.
@@ -81,12 +78,10 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
 - **Custom categories and subcategories.**
 
 ### Subscriptions
-- **Found from evidence:**
-  - Receipts with a billing period or renewal date.
-  - Subscription emails without a payment: trials, failed payments, cancellations and reminders.
-  - Regular payments to the same payee. These start as **Needs verification**.
+- **Found from your statements:**
+  - Regular payments to the same payee. These start as **Needs verification** until you confirm them.
   - Payments you link yourself. For example, an Amazon charge that is really Amazon Prime, optionally only at that exact amount.
-- **One receipt is not enough to call a subscription Active.** It needs a stated renewal date or a repeat payment on schedule.
+  - Subscriptions you add (for card or cash payments).
 - **Statuses:** Active, Trial, Payment failed, Needs verification, Inactive and Cancelled.
   - You can change the status at any time.
   - Inactive and cancelled subscriptions keep their history but don't count towards monthly or annual cost.
@@ -95,17 +90,14 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
   - Next renewal, marked "estimated" unless stated.
   - Last payment and payment source.
 - **Detail view:**
-  - Complete history with email links.
+  - Complete payment history.
   - Price changes.
   - Editable name, amount, cycle, renewal and notes.
 - **Insights:** most expensive subscription, price increases, overlapping services and upcoming renewals. Recundle never claims a service is unused; it can't see usage.
 
 ### Loans
-- **Discovery:** Gmail loan emails are grouped by lender and loan account number. Promotions and pre-approved offers are ignored.
-  - Discovered loans are offered for you to **Confirm** or mark **Not mine**.
-  - Nothing counts until you confirm it.
+- **Added by you** with the figures from your lender's statement or app. EMI payments in your PhonePe statements can be linked to a loan from the transaction.
 - **Labelled figures.** Every figure says where it comes from:
-  - **From lender email**
   - **Entered by you**
   - **Estimated**: calculated by amortisation, and never shown as official.
   - **Not available**
@@ -117,11 +109,7 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
   - Remaining interest and completion date.
   - Implied interest rate.
   - Foreclosure amount (using your charge %).
-- **NOCs:**
-  - NOC and closure emails are matched to a loan by lender and account number. A match by lender only is flagged.
-  - The loan shows **NOC found**, with the email, closure date and attachment.
-  - Only your confirmation marks it **Closed**.
-  - A closure without an NOC shows "NOC not identified — Loan closure status requires verification".
+- **Closing a loan:** only your confirmation marks it **Closed**. Without an NOC on record it shows "NOC not identified — Loan closure status requires verification".
 - **Repayment roadmap:**
   - Compares *highest interest first* with *smallest balance first* for an extra monthly amount and/or a one-time payment.
   - The EMIs of closed loans roll over to the next loan.
@@ -148,15 +136,12 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
   - The key is derived from `GOOGLE_WEB_CLIENT_SECRET` using HKDF, with salt `recription-session-v1`.
 - **CSRF protection:** every API call must carry an `X-Recundle: 1` header. A cross-site page can't send it without a CORS preflight, which the server never allows.
 - **Least privilege:**
-  - `gmail.readonly`: Recundle can never send, delete or change email. This is the only Google data scope.
-    - Basic profile.
+  - `drive.readonly`: Recundle only reads; it can never change, move or delete a file. It lists and opens only the PDFs in the “Phone Pe - Monthly Statement” folder.
+  - Basic profile.
+  - No Gmail access.
 - **No personal data in logs.** Server errors log only an error code.
 - **Audit trail:** edits, rules, subscription and loan status changes, imports and deletions (Settings → Change history).
 - **Your data, your control:** sign out (clears this device), disconnect Google (revokes access), download a JSON copy, or delete everything.
-- **Optional AI reading** (`ANTHROPIC_API_KEY`):
-  - Closure letters, NOCs, sanction letters and unclear loan emails are sent to the Claude API (`claude-opus-5-5`) to extract stated figures. Only those emails are sent, with up to 4 per scan page.
-  - Results are labelled "Read by AI".
-  - The model never closes a loan; you do.
 
 ## Code
 
@@ -165,21 +150,19 @@ api/            Vercel functions (Web Request → Response)
   session.js    who is signed in; never returns tokens
   auth.js       Google code → sealed cookie
   logout.js     sign out / revoke
-  gmail.js      one page of the Gmail scan (the browser pages through)
+  drive.js      list / read the PhonePe statements in the Drive folder
   statement.js  read an uploaded PhonePe statement PDF
 server/
   session.js    AES-GCM cookie sealing
   google.js     token refresh, Google API errors → app errors
-  gmail.js      list + fetch + parse; PhonePe statement attachments
+  drive.js      find the statements folder (and subfolders), list and download PDFs
   phonepe.js    PDF text extraction (unpdf), password handling
-  ai.js         optional Claude extraction for loan emails
-  parse/        receipts & subscriptions, loans & NOCs, text helpers, lender list
 src/
   core/         pure logic, unit-tested: store & merge, categories & built-in guesses,
                 transactions (rules, duplicates), analytics, subscriptions, loans
                 (amortisation, estimates, NOC matching, strategies), CSV statements,
                 PhonePe statement layout → rows
-  data/         AppData provider: session, on-device storage (IndexedDB), resumable Gmail scan, actions
+  data/         AppData provider: session, on-device storage (IndexedDB), Drive sync, actions
   components/   UI kit, charts (Recharts), expenses components, app shell
   pages/        Landing, Dashboard, Expenses, Subscriptions, Loans, Todos, Settings
 test/           node:test suites (all data made up)
@@ -208,17 +191,15 @@ Dark mode is supported.
 ## Set up and run
 
 ### 1. Google Cloud (project `286940691052`, OAuth client `286940691052-ss6b2j3m1hfp69678ce04oburpmjunuf`)
-- Enable the **Gmail API**.
-- Under **OAuth consent screen → Data access**, add the `gmail.readonly` scope.
-  - `gmail.readonly` is restricted: while the app is in Testing, add yourself as a test user (test-user access must be re-granted every 7 days).
+- Enable the **Google Drive API**. The Gmail API is no longer used and can be disabled.
+- Under **OAuth consent screen → Data access**, add the `…/auth/drive.readonly` scope and remove `gmail.readonly`.
+  - `drive.readonly` is restricted: while the app is in Testing, add yourself as a test user (test-user access must be re-granted every 7 days).
   - A public launch needs Google verification and a security assessment.
 - Under **Credentials → the Web client → Authorised JavaScript origins**, add the site address (for example `https://recundle.vercel.app`) and `http://localhost:5173` for development. No redirect URI is needed.
-- Raise **Gmail API → Quotas → Units per minute per user** if a first scan pauses often. The app waits and resumes on its own.
 
 ### 2. Environment variables (see `.env.example`)
 - `GOOGLE_WEB_CLIENT_SECRET` (required): the Web client's secret.
 - `GOOGLE_CLIENT_ID` (optional): set this if you use a different OAuth client.
-- `ANTHROPIC_API_KEY` (optional): turns on AI reading of loan emails.
 
 ### 3. Deploy to Vercel
 - Import the repository (root directory `recundle/` if it stays inside another repo).
@@ -230,16 +211,15 @@ Dark mode is supported.
 npm install
 cp .env.example .env.local   # add the secret
 npm run dev                  # http://localhost:5173 (API routes served by Vite)
-npm test                     # 36 unit tests
+npm test                     # 23 unit tests
 ```
 
 ## Limitations
 
-- **Expenses are what PhonePe statements show.** Card payments, cash and other UPI apps are not counted unless you add them (manually or as a CSV statement). Receipts for them still feed Subscriptions.
+- **Expenses are what PhonePe statements show.** Card payments, cash and other UPI apps are not counted unless you add them (manually or as a CSV statement).
 - **Statement layout.** The reader follows PhonePe's Date | Transaction Details | Type | Amount table. If PhonePe changes the layout, rows may be skipped; Settings shows how many rows each statement gave.
-- **Statements must be CSV.** Excel and PDF statements aren't read; save Excel as CSV first.
-- **Loan figures are what the emails state.** Rate, tenure or balance are often missing; enter them from a statement. Estimates assume fixed rates and monthly EMIs.
-- **NOCs that exist only as PDF attachments are matched by subject and account, not by reading the PDF.** With AI reading on, the email text is read, but attachments still aren't.
+- **Bank statements must be CSV.** Only PhonePe statements are read as PDF.
+- **Loan figures are what you enter.** Estimates assume fixed rates and monthly EMIs.
 - **Subscription usage is unknown,** so Recundle never calls a subscription unused.
 - **Data stays in one browser.** It doesn't sync between devices; use the backup download to move it.
 - **Classification rules match the payee name exactly,** with direction and optionally amount. Similar names need your confirmation.

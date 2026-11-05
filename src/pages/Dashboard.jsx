@@ -16,7 +16,7 @@ function greeting() {
 }
 
 export default function Dashboard() {
-  const { session, txns, subscriptions, loans, todos, today, scan, syncNow, dataState } = useApp();
+  const { session, txns, subscriptions, loans, todos, today, drive, syncNow, dataState } = useApp();
   const navigate = useNavigate();
   // Statements arrive after a month ends, so until this month has any rows, show the latest month.
   const current = useMemo(() => txns.some((t) => t.date >= `${monthKey(today)}-01`), [txns, today]);
@@ -51,7 +51,6 @@ export default function Dashboard() {
   if (subs.failed) insights.push({ icon: 'CircleAlert', tone: 'bad', text: `${plural(subs.failed, 'subscription')} had a failed payment. Update the payment method to keep ${subs.failed === 1 ? 'it' : 'them'}.`, to: '/subscriptions' });
   const noc = loans.find((l) => l.status === 'noc_received');
   if (noc) insights.push({ icon: 'FileCheck2', tone: 'good', text: `An NOC for your ${noc.lender} loan was found. Review it to close the loan.`, to: '/loans' });
-  if (lt.verify) insights.push({ icon: 'Search', tone: 'warn', text: `${plural(lt.verify, 'possible loan')} found in Gmail to confirm.`, to: '/loans' });
   if (pending.length) insights.push({ icon: 'ListTodo', tone: 'info', text: `${plural(pending.length, 'personal responsibility', 'personal responsibilities')} still pending.`, to: '/todos' });
 
   const nothing = !txns.length && !subscriptions.length && !loans.length;
@@ -64,15 +63,15 @@ export default function Dashboard() {
         <p className="label-mono text-ink-3">01 / {greeting()}</p>
         <h1 className="mt-1 text-[34px] font-medium leading-tight sm:text-[46px]">{first ? <>Hi {first}, <span className="text-ink/45">here’s your month.</span></> : 'Welcome.'}</h1>
         <p className="mt-1 text-[14px] text-ink-2">
-          {scan.running ? `Reading your Gmail… ${scan.scanned} emails checked so far.` : dataState.status === 'loading' ? 'Loading your data…' : current || !txns.length ? `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.` : `Showing ${monthName}, from your latest PhonePe statement.`}
+          {drive.running ? (drive.total ? `Reading your PhonePe statements… ${drive.read} of ${drive.total}.` : 'Checking your Google Drive for statements…') : dataState.status === 'loading' ? 'Loading your data…' : current || !txns.length ? `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.` : `Showing ${monthName}, from your latest PhonePe statement.`}
         </p>
         </div>
       </div>
 
-      {nothing && !scan.running && (
+      {nothing && !drive.running && (
         <Card>
-          <Empty icon="Sparkles" title="Let's find your finances" action={<div className="flex flex-wrap justify-center gap-2">{session.access?.gmail && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Gmail</Button>}<Button variant="outline" icon="FileUp" onClick={() => navigate('/expenses?tab=overview')}>Import a statement</Button><Button variant="outline" icon="ListTodo" onClick={() => navigate('/todos')}>Add to-dos</Button></div>}>
-            Recundle reads your PhonePe monthly statements from the last 12 months, and matches receipts, subscription and loan emails to them.
+          <Empty icon="Sparkles" title="Let's find your finances" action={<div className="flex flex-wrap justify-center gap-2">{session.access?.drive && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Drive</Button>}<Button variant="outline" icon="FileUp" onClick={() => navigate('/expenses?tab=overview')}>Add a statement</Button><Button variant="outline" icon="ListTodo" onClick={() => navigate('/todos')}>Add to-dos</Button></div>}>
+            Recundle reads the PhonePe statement PDFs in your Google Drive folder “Phone Pe - Monthly Statement”. Every payment and credit becomes a transaction; recurring payments become subscriptions and EMIs.
           </Empty>
         </Card>
       )}
@@ -135,7 +134,7 @@ export default function Dashboard() {
                       <span className="truncate font-medium">{l.lender}</span>
                       <span className="tnum font-semibold">{l.outstanding.value != null ? inr(l.outstanding.value) : '—'}</span>
                     </div>
-                    {l.progress != null ? <Progress value={l.progress} className="mt-1.5" /> : <p className="text-[12px] text-ink-3">{l.discovered ? 'Found in Gmail · confirm it' : 'Progress needs the original amount'}</p>}
+                    {l.progress != null ? <Progress value={l.progress} className="mt-1.5" /> : <p className="text-[12px] text-ink-3">{l.discovered ? 'Found · confirm it' : 'Progress needs the original amount'}</p>}
                   </Link>
                 </li>
               ))}

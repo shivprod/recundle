@@ -10,27 +10,27 @@ import { cn } from '@/lib/cn';
 const PILLARS = [
   ['Expenses', 'Money in, money out, and where it goes, by category, payee and month.'],
   ['Subscriptions', 'Every recurring payment, its renewal date, price changes and history.'],
-  ['Loans', 'What you owe, NOCs found in your inbox, and the fastest way out of debt.'],
+  ['Loans', 'What you owe, EMIs from your statements, and the fastest way out of debt.'],
   ['To-Dos', 'Personal responsibilities as cards you flip and tick off. No calendars.'],
 ];
 
 const MODULES = [
   { code: 'M/01', kind: 'Expenses', title: 'Where it goes', sub: 'Cash flow · categories · payees', text: 'Income against spending each month, money flowing into categories, and the payments that add up.' },
-  { code: 'M/02', kind: 'Subscriptions', title: 'What renews', sub: 'Renewals · price changes', text: 'Found from receipts and renewal emails. Failed payments are flagged before a service stops.' },
-  { code: 'M/03', kind: 'Loans', title: 'What you owe', sub: 'Balances · NOCs · payoff plan', text: 'Lender figures, labelled estimates, closure letters matched to the right loan, and your debt-free date.' },
+  { code: 'M/02', kind: 'Subscriptions', title: 'What renews', sub: 'Renewals · price changes', text: 'Found from regular payments in your PhonePe statements, with renewal dates and price changes.' },
+  { code: 'M/03', kind: 'Loans', title: 'What you owe', sub: 'Balances · EMIs · payoff plan', text: 'Your lender figures, labelled estimates, EMIs matched from your statements, and your debt-free date.' },
   { code: 'M/04', kind: 'To-Dos', title: 'What’s pending', sub: 'Flip cards · done in a tap', text: 'Renew a passport, book a check-up, file the paperwork. A calm list of what’s still on you.' },
 ];
 
 const PRIVACY = [
-  ['Read-only Gmail', 'Recundle can read payment alerts, receipts and loan emails. It can never send, delete or change an email.'],
+  ['Read-only Drive folder', 'Recundle reads only the PhonePe statements in one Google Drive folder. It can never change, move or delete a file.'],
   ['Stays on your device', 'What it finds and everything you change is saved in your browser. Recundle’s servers keep nothing.'],
-  ['Nothing invented', 'Every figure comes from an email, a statement or you. Anything calculated is labelled as an estimate.'],
+  ['Nothing invented', 'Every figure comes from a statement or from you. Anything calculated is labelled as an estimate.'],
 ];
 
 const FAQ = [
-  ['Do I share my bank password?', 'Never. Recundle reads the alerts and receipts your bank and apps already email you, and statements you choose to import.'],
+  ['Do I share my bank password?', 'Never. Recundle reads the PhonePe statements you save in your Google Drive, nothing else.'],
   ['Can it move money?', 'No. It is read-only: it organises your finances but can’t pay, transfer or change anything.'],
-  ['Does it work with Google Pay and PhonePe?', 'Those apps don’t let other apps read your history, so Recundle uses the UPI alerts your bank emails you. A CSV statement fills any gaps.'],
+  ['Where do my transactions come from?', 'Download your monthly statement from the PhonePe app and save the PDF in a Google Drive folder named “Phone Pe - Monthly Statement”. Recundle reads every statement in it.'],
   ['What if it gets a category wrong?', 'Change it. Recundle asks whether to apply it to future payments from that payee, and remembers.'],
 ];
 
@@ -115,7 +115,7 @@ export default function Landing() {
             <RecundleLogo />
           </a>
           <p className="label-mono hidden items-center gap-2 md:flex">
-            <span className="size-1.5 animate-pulse rounded-full bg-brand" /> Read-only · Gmail only · India
+            <span className="size-1.5 animate-pulse rounded-full bg-brand" /> Read-only · PhonePe statements · India
           </p>
           <button type="button" onClick={start} disabled={busy || off} className="text-[14px] font-medium text-ink transition hover:text-brand disabled:opacity-60">
             Sign in
@@ -132,7 +132,7 @@ export default function Landing() {
               <p className="label-mono">N° 001 — Personal finance · Track. Bundle. Recundle.</p>
               <Title as="h1" dark="Your money, bundled" muted="into one calm view" tail="." className="mt-5 text-[46px] sm:text-[80px]" />
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-5 max-w-[620px] text-[16px] leading-relaxed text-ink-2">
-                Recundle reads the payment alerts, receipts and loan emails already in your Gmail, and shows where your money goes, what renews next, what you still owe, and what’s still pending.
+                Recundle reads the PhonePe statements in your Google Drive and shows where your money goes, what renews next, what you still owe, and what’s still pending.
               </motion.p>
               {off && <p className="mt-4 text-[13.5px] text-warn">Sign-in isn’t available yet: this deployment is missing its Google client secret.</p>}
               {error && <p className="mt-4 text-[14px] text-bad">{error}</p>}
@@ -152,7 +152,7 @@ export default function Landing() {
           <div className="grid gap-8 lg:grid-cols-[1fr_2.4fr]">
             <Eyebrow n="01">Vision</Eyebrow>
             <motion.p initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="font-display text-[26px] font-light leading-[1.3] tracking-[-0.02em] sm:text-[32px]">
-              One place for the four things that weigh on you: what you spend, what renews, what you owe, and <span className="text-brand">what’s still pending</span>, read from the emails you already get and corrected by you.
+              One place for the four things that weigh on you: what you spend, what renews, what you owe, and <span className="text-brand">what’s still pending</span>, read from the PhonePe statements in your Drive and corrected by you.
             </motion.p>
           </div>
           <div className="mt-20 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
@@ -209,7 +209,7 @@ export default function Landing() {
           <GemField className="absolute inset-0" />
           <div className={cn(wrap, 'relative flex h-full items-center')}>
             <motion.blockquote initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.9 }} className="glass max-w-[920px] rounded-xl p-6 sm:p-8">
-              <Title as="p" dark="We don’t guess your numbers." muted="We read your receipts, and you correct the rest" tail="." className="text-[36px] sm:text-[64px]" />
+              <Title as="p" dark="We don’t guess your numbers." muted="We read your statements, and you correct the rest" tail="." className="text-[36px] sm:text-[64px]" />
               <footer className="label-mono mt-6">— How Recundle works</footer>
             </motion.blockquote>
           </div>
@@ -219,7 +219,7 @@ export default function Landing() {
         <section id="privacy" className={cn(wrap, 'py-24 sm:py-36')}>
           <div className="grid gap-8 lg:grid-cols-[1fr_2.4fr]">
             <Eyebrow n="03">Privacy</Eyebrow>
-            <Title dark="Your inbox stays yours." muted="Your numbers stay on your device" tail="." className="text-[34px] sm:text-[52px]" />
+            <Title dark="Your Drive stays yours." muted="Your numbers stay on your device" tail="." className="text-[34px] sm:text-[52px]" />
           </div>
           <div className="mt-20 grid gap-10 md:grid-cols-3 md:gap-8">
             {PRIVACY.map(([title, text], i) => (
@@ -248,7 +248,7 @@ export default function Landing() {
             <div>
               <Eyebrow n="05">Access</Eyebrow>
               <Title dark="Bundle your" muted="money" tail="." className="mt-4 text-[46px] sm:text-[72px]" />
-              <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-ink-2">Sign in with Google and Recundle reads the last 12 months of financial email. It takes a minute or two, and you can start using it while it reads.</p>
+              <p className="mt-5 max-w-[440px] text-[16px] leading-relaxed text-ink-2">Sign in with Google and Recundle reads the statements in your “Phone Pe - Monthly Statement” Drive folder. It takes a few seconds, and new statements are picked up each time you open it.</p>
             </div>
             <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="glass rounded-xl p-6 sm:p-7">
               <p className="label-mono">This month closes in</p>
@@ -256,7 +256,7 @@ export default function Landing() {
               <div className="mt-7 border-t border-ink/12 pt-6">
                 <p className="label-mono">Recundle reads</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {['Bank & UPI alerts', 'Receipts', 'Subscriptions', 'Loan emails & NOCs'].map((t) => (
+                  {['PhonePe statements', 'Payments & credits', 'Recurring payments', 'EMIs'].map((t) => (
                     <span key={t} className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-surface/70 px-3 py-2 text-[13.5px]">
                       <Icon name="Check" size={14} className="text-brand" /> {t}
                     </span>

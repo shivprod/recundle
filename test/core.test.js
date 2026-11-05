@@ -32,12 +32,11 @@ test('entity keys and similarity', () => {
   assert.ok(!looksLikePerson('Acme Tech Pvt Ltd'));
 });
 
-test('a receipt and a bank alert for the same payment count once', () => {
-  const txns = buildTransactions(sample());
-  const netflix = txns.filter((t) => t.counterparty === 'Netflix');
+test('the same payment in a PhonePe statement and a CSV bank statement counts once', () => {
+  const s = ingestEvents(sample(), [{ kind: 'txn', source: 'statement', rowId: 'csv1', date: '2026-10-02', direction: 'out', amount: 649_00, counterparty: 'NETFLIX.COM' }], 'statement');
+  const netflix = buildTransactions(s).filter((t) => t.amount === 649_00);
   assert.equal(netflix.length, 1);
-  assert.equal(netflix[0].sources.length, 2);
-  assert.equal(netflix[0].subscription.period, 'monthly');
+  assert.deepEqual(netflix[0].sources.map((x) => x.kind), ['phonepe', 'statement']);
 });
 
 test('built-in guesses: salary, refund, person', () => {

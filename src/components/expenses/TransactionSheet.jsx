@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Badge, Button, Dialog, Field, GmailLink, Icon, Input, Select, Sheet, Textarea } from '@/components/ui';
+import { Badge, Button, Dialog, Field, Icon, Input, Select, Sheet, Textarea } from '@/components/ui';
 import { allCategories, TYPES } from '@/core/categories';
 import { matchingCount, similarPayees } from '@/core/transactions';
 import { inr, pct, shortDate } from '@/core/format';
@@ -8,7 +8,7 @@ import { useApp } from '@/data/AppData';
 import { Amount, ClassifiedBadge } from './common';
 
 const RULE_FIELDS = ['category', 'subcategory', 'type', 'counterparty', 'purpose', 'subscription'];
-const SOURCE_LABEL = { phonepe: 'PhonePe statement', 'gmail-alert': 'Bank alert (Gmail)', 'gmail-receipt': 'Receipt (Gmail)', 'gmail-loan': 'Lender email (Gmail)', statement: 'Imported statement', manual: 'Added by you' };
+const SOURCE_LABEL = { phonepe: 'PhonePe statement', statement: 'Imported statement', manual: 'Added by you' };
 
 /**
  * Everything about one transaction, editable. When the category, type or payee name changes,
@@ -194,7 +194,6 @@ export default function TransactionSheet({ txn, onClose }) {
             {txn.sources.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-ink-2">{SOURCE_LABEL[s.kind] ?? s.kind}{s.subject ? ` · ${s.subject}` : ''}</span>
-                <GmailLink messageId={s.messageId} email={session.user?.email} />
               </li>
             ))}
           </ul>

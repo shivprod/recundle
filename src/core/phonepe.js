@@ -239,6 +239,3 @@ export function phonePeEvents(parsed, { messageId = null, fileName = null } = {}
     confidence: 0.98,
   }));
 }
-
-/** Is this email a PhonePe statement? */
-export const isPhonePeStatement = (from, subject) => /phonepe/i.test(`${from} ${subject}`) && /statement/i.test(subject);

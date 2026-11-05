@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { api, ApiError } from './api';
+import { api } from './api';
 import { requestGoogleCode } from './google';
-import { addDays, addMonths, todayIso, uid } from '@/core/format';
-import { editTransaction, emptyStore, ingestEvents, newRule, normalise, patchRecord, putRecord, removeRecord, withAudit } from '@/core/store';
+import { todayIso, uid } from '@/core/format';
+import { dropEmailData, editTransaction, emptyStore, ingestEvents, newRule, normalise, patchRecord, putRecord, removeRecord, withAudit } from '@/core/store';
 import { deleteData, loadData, loadSetting, saveData, saveSetting } from './localdb';
 import { phonePeEvents } from '@/core/phonepe';
 import { buildTransactions } from '@/core/transactions';
@@ -13,32 +13,32 @@ import { statementToEvents } from '@/core/csv';
 
 /**
  * Everything the app knows lives here: the Google session, the user's data (kept on this device in
- * IndexedDB), the Gmail scan, and every action that changes data.
+ * IndexedDB), reading PhonePe statements from the Google Drive folder, and every action that changes data.
  * Pages read derived views (transactions, subscriptions, loans) and call actions; nothing else
  * touches storage.
  */
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
 
-const SCAN_STALE_MS = 6 * 3600_000;
-/** Bumped when what a scan reads changes, so older data is read again once (v2: PhonePe statements). */
-const SCAN_VERSION = 2;
+
 
 export function AppDataProvider({ children }) {
   const [session, setSession] = useState({ status: 'loading' });
   const [store, setStore] = useState(emptyStore());
   const [dataState, setDataState] = useState({ status: 'idle', error: null });
-  const [scan, setScan] = useState({ running: false, scanned: 0, found: 0, pausedUntil: null, error: null });
+  const [drive, setDrive] = useState({ running: false, files: 0, read: 0, total: 0, error: null, checkedAt: null });
+  const driveBusy = useRef(false);
+  const sessionRef = useRef(null);
   const storeRef = useRef(store);
   const saveTimer = useRef(null);
   const [ppPassword, setPpPassword] = useState(null);
   const ppRef = useRef(null);
-  const scanning = useRef(false);
   const emailRef = useRef(null);
   const email = session.user?.email ?? null;
 
   storeRef.current = store;
   emailRef.current = email;
+  sessionRef.current = session;
 
   // ── Session ────────────────────────────────────────────────────────────
   const refreshSession = useCallback(async () => {
@@ -78,7 +78,9 @@ export function AppDataProvider({ children }) {
     });
     loadData(email).then((data) => {
       if (cancelled) return;
-      const loaded = normalise(data);
+      const normal = normalise(data);
+      const loaded = dropEmailData(normal);
+      if (loaded !== normal) saveData(email, loaded).catch(() => undefined);
       storeRef.current = loaded;
       setStore(loaded);
       setDataState({ status: 'ready', error: null });
@@ -137,89 +139,60 @@ export function AppDataProvider({ children }) {
     [email, persist],
   );
 
-  // ── Gmail scan ────────────────────────────────────────────────────────
+  // ── Google Drive statements ─────────────────────────────────────────
   /**
-   * Reads one window of Gmail page by page. After every page the new transactions and the position
-   * (`sync.pending`) are saved, so reloading or switching pages mid-scan resumes instead of restarting.
+   * PhonePe statement PDFs in the Google Drive folder "Phone Pe - Monthly Statement" (and its
+   * subfolders). Only new or changed files are downloaded.
    */
-  const runScan = useCallback(
-    async ({ after, before, pageToken: startToken = null, full = false }) => {
-      if (scanning.current) return;
-      scanning.current = true;
-      setScan({ running: true, scanned: 0, found: 0, pausedUntil: null, error: null });
-      let pageToken = startToken;
-      let scanned = 0;
-      let found = 0;
-      const savePending = (token) => {
-        const s = storeRef.current;
-        storeRef.current = { ...s, sync: { ...s.sync, pending: { after: after ?? null, before: before ?? null, pageToken: token, full } } };
-      };
+  const syncDrive = useCallback(
+    async ({ retryLocked = false } = {}) => {
+      if (driveBusy.current || !sessionRef.current?.access?.drive) return null;
+      driveBusy.current = true;
+      setDrive((d) => ({ ...d, running: true, read: 0, total: 0, error: null }));
       try {
-        savePending(pageToken);
+        const files = [];
+        let pageToken = null;
+        let folders = 0;
         do {
-          let page;
-          try {
-            page = await api('gmail', { method: 'POST', body: { after, before, pageToken, password: ppRef.current || undefined } });
-          } catch (err) {
-            if (err instanceof ApiError && err.code === 'rate_limited') {
-              const wait = Math.min(120, err.body.retryAfter ?? 30);
-              setScan((x) => ({ ...x, pausedUntil: Date.now() + wait * 1000 }));
-              await new Promise((r) => setTimeout(r, wait * 1000));
-              setScan((x) => ({ ...x, pausedUntil: null }));
-              continue;
-            }
-            // An expired page token: start this window again from its newest page.
-            if (err instanceof ApiError && err.status === 400 && pageToken) {
-              pageToken = null;
-              continue;
-            }
-            throw err;
-          }
-          scanned += page.scanned;
-          found += page.events.length;
-          storeRef.current = ingestEvents(storeRef.current, page.events, 'gmail');
+          const page = await api('drive', { method: 'POST', body: { action: 'list', pageToken } });
+          files.push(...page.files);
+          folders = Math.max(folders, page.folders ?? 0);
           pageToken = page.nextPageToken;
-          savePending(pageToken);
+        } while (pageToken && files.length < 2000);
+        const known = storeRef.current.statements;
+        const todo = files.filter((f) => {
+          const st = known[`drive:${f.id}`];
+          if (!st || st.deleted || st.modifiedTime !== f.modifiedTime) return true;
+          if (st.status === 'locked') return Boolean(ppRef.current);
+          if (st.status === 'wrong_password') return retryLocked && Boolean(ppRef.current);
+          return false;
+        });
+        setDrive((d) => ({ ...d, files: files.length, folders, total: todo.length }));
+        let read = 0;
+        for (let i = 0; i < todo.length; i += 4) {
+          const batch = todo.slice(i, i + 4);
+          const res = await api('drive', { method: 'POST', body: { action: 'read', files: batch, password: ppRef.current || undefined } });
+          storeRef.current = ingestEvents(storeRef.current, res.events, 'statement');
+          read += batch.length;
           setStore(storeRef.current);
           persist(true);
-          setScan((x) => ({ ...x, scanned, found }));
-        } while (pageToken);
-        const s = storeRef.current;
-        storeRef.current = {
-          ...s,
-          updatedAt: new Date().toISOString(),
-          sync: {
-            lastScanAt: new Date().toISOString(),
-            scannedFrom: [s.sync.scannedFrom, after].filter(Boolean).sort()[0] ?? after ?? null,
-            scannedTo: before && s.sync.scannedTo ? s.sync.scannedTo : todayIso(),
-            messages: (s.sync.messages ?? 0) + scanned,
-            pending: null,
-            version: full || s.sync.version === SCAN_VERSION ? SCAN_VERSION : (s.sync.version ?? 1),
-          },
-        };
-        setStore(storeRef.current);
-        persist(true);
-        setScan({ running: false, scanned, found, pausedUntil: null, error: null, finishedAt: Date.now() });
+          setDrive((d) => ({ ...d, read }));
+        }
+        setDrive((d) => ({ ...d, running: false, checkedAt: Date.now() }));
+        return { files: files.length, read };
       } catch (err) {
-        setStore(storeRef.current);
-        persist(true);
-        setScan({ running: false, scanned, found, pausedUntil: null, error: err.message, code: err.code });
+        setDrive((d) => ({ ...d, running: false, error: err.message, code: err.code }));
         if (err.code === 'reconnect' || err.code === 'signed_out') setSession((x) => ({ ...x, needsReconnect: true }));
+        return null;
       } finally {
-        scanning.current = false;
+        driveBusy.current = false;
       }
     },
     [persist],
   );
 
-  /** New mail since the last scan (or the first 12 months on a new account). Resumes an unfinished scan first. */
-  const syncNow = useCallback(() => {
-    const s = storeRef.current.sync;
-    if (s.pending) return runScan(s.pending);
-    // First scan, or data from before PhonePe statements were read: read the last 12 months again.
-    if (!s.scannedTo || s.version !== SCAN_VERSION) return runScan({ after: addMonths(todayIso(), -12), full: true });
-    return runScan({ after: addDays(s.scannedTo, -3) });
-  }, [runScan]);
+  /** Sync button: new or changed statements in the Drive folder. */
+  const syncNow = useCallback(() => syncDrive(), [syncDrive]);
 
   /** Saves the PhonePe statement password on this device and re-reads statements it couldn't open. */
   const setPhonePePassword = useCallback(
@@ -229,50 +202,29 @@ export function AppDataProvider({ children }) {
       setPpPassword(value);
       if (email) await saveSetting(email, 'phonepePassword', value);
       if (!value) return { read: 0, locked: 0 };
-      const locked = Object.values(storeRef.current.statements).filter((x) => !x.deleted && (x.status === 'locked' || x.status === 'wrong_password'));
-      const ids = [...new Set(locked.map((x) => x.messageId))];
-      let read = 0;
-      for (let i = 0; i < ids.length; i += 20) {
-        const page = await api('gmail', { method: 'POST', body: { messageIds: ids.slice(i, i + 20), password: value } });
-        storeRef.current = ingestEvents(storeRef.current, page.events, 'gmail');
-        read += page.events.filter((e) => e.kind === 'statement' && e.status === 'read').length;
-      }
-      setStore(storeRef.current);
-      persist(true);
-      return { read, locked: Object.values(storeRef.current.statements).filter((x) => x.status === 'locked' || x.status === 'wrong_password').length };
+      const isLocked = (x) => !x.deleted && (x.status === 'locked' || x.status === 'wrong_password');
+      const before = Object.values(storeRef.current.statements).filter(isLocked).length;
+      await syncDrive({ retryLocked: true });
+      const locked = Object.values(storeRef.current.statements).filter(isLocked).length;
+      return { read: before - locked, locked };
     },
-    [email, persist],
+    [email, persist, syncDrive],
   );
 
-  /** Reads older mail, back to `months` ago. */
-  const scanHistory = useCallback(
-    (months) => {
-      const s = storeRef.current.sync;
-      const target = addMonths(todayIso(), -months);
-      if (s.scannedFrom && target >= s.scannedFrom) return Promise.resolve();
-      return runScan({ after: target, before: s.scannedFrom ? addDays(s.scannedFrom, 1) : undefined });
-    },
-    [runScan],
-  );
-
-  // Once per sign-in: resume an interrupted scan, or check for new mail if the last one is old.
-  const autoSynced = useRef(null);
+  // Drive is checked on every visit (and as soon as access is granted): listing is cheap and only
+  // new or changed statements are downloaded.
+  const autoDrive = useRef(null);
   useEffect(() => {
-    if (!email || !session.access?.gmail || dataState.status !== 'ready' || autoSynced.current === email) return;
-    autoSynced.current = email;
-    const s = storeRef.current.sync;
-    const last = Date.parse(s.lastScanAt ?? '') || 0;
-    if (s.pending || s.version !== SCAN_VERSION || Date.now() - last > SCAN_STALE_MS) syncNow();
-  }, [email, session.access?.gmail, dataState.status, syncNow]);
+    if (!email || !session.access?.drive || dataState.status !== 'ready' || autoDrive.current === email) return;
+    autoDrive.current = email;
+    syncDrive();
+  }, [email, session.access?.drive, dataState.status, syncDrive]);
 
   // ── Derived views ─────────────────────────────────────────────────────
   const today = todayIso();
-  // Every payment seen, including receipts and lender emails with no matching statement row…
-  const allTxns = useMemo(() => buildTransactions(store, { ownNames: [session.user?.name] }), [store, session.user?.name]);
-  // …but expenses count only statement rows (PhonePe, imported statements) and payments you added.
-  const txns = useMemo(() => allTxns.filter((t) => !t.evidence), [allTxns]);
-  const subscriptions = useMemo(() => deriveSubscriptions(store, allTxns, today), [store, allTxns, today]);
-  const loanView = useMemo(() => deriveLoans(store, allTxns, today), [store, allTxns, today]);
+  const txns = useMemo(() => buildTransactions(store, { ownNames: [session.user?.name] }), [store, session.user?.name]);
+  const subscriptions = useMemo(() => deriveSubscriptions(store, txns, today), [store, txns, today]);
+  const loanView = useMemo(() => deriveLoans(store, txns, today), [store, txns, today]);
   const todos = useMemo(() => Object.values(store.todos).filter((t) => !t.deleted), [store.todos]);
 
   // ── Actions ────────────────────────────────────────────────────────────
@@ -294,7 +246,7 @@ export function AppDataProvider({ children }) {
         return id;
       },
       deleteManualTransaction: (id) => update((s) => withAudit(removeRecord(s, 'txns', id), 'Deleted transaction', id)),
-      /** A PhonePe statement PDF picked from the device (for months that aren't in Gmail). */
+      /** A PhonePe statement PDF picked from the device (for months not yet in the Drive folder). */
       importPhonePePdf: async (file, password) => {
         const bytes = new Uint8Array(await file.arrayBuffer());
         let bin = '';
@@ -377,9 +329,8 @@ export function AppDataProvider({ children }) {
     refreshSession,
     store,
     dataState,
-    scan,
+    drive,
     syncNow,
-    scanHistory,
     phonepePassword: ppPassword,
     setPhonePePassword,
     statements: Object.values(store.statements ?? {}).filter((x) => !x.deleted).sort((a, b) => (b.period?.from ?? b.date).localeCompare(a.period?.from ?? a.date)),

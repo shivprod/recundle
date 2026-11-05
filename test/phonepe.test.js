@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePhonePeStatement, phonePeEvents, parseDate, isPhonePeStatement } from '../src/core/phonepe.js';
+import { parsePhonePeStatement, phonePeEvents, parseDate } from '../src/core/phonepe.js';
+import { dropEmailData } from '../src/core/store.js';
 import { emptyStore, ingestEvents } from '../src/core/store.js';
 import { buildTransactions } from '../src/core/transactions.js';
 import { deriveSubscriptions } from '../src/core/subscriptions.js';
@@ -58,35 +59,30 @@ test('whole-line statements are read too', () => {
   assert.equal(txns[1].amount, 100000);
 });
 
-test('only PhonePe statement emails are treated as statements', () => {
-  assert.ok(isPhonePeStatement('PhonePe <noreply@phonepe.com>', 'PhonePe - Monthly Statement'));
-  assert.ok(!isPhonePeStatement('PhonePe <noreply@phonepe.com>', 'Payment successful'));
-  assert.ok(!isPhonePeStatement('HDFC Bank <alerts@hdfcbank.net>', 'Your account statement'));
-});
-
-test('statement rows are the expenses; receipts and lender emails are matched to them', () => {
-  const rows = phonePeEvents(parsePhonePeStatement([page]), { messageId: 'stmt1' });
-  let s = ingestEvents(emptyStore(), rows, 'gmail');
-  // Re-reading the same statement adds nothing.
-  s = ingestEvents(s, rows, 'gmail');
-  s = ingestEvents(s, [
-    // Netflix's receipt for the same payment: matched, lends its name and subscription facts.
-    { kind: 'txn', source: 'gmail-receipt', messageId: 'r1', date: '2026-10-15', direction: 'out', amount: 649_00, counterparty: 'Netflix', subscription: { isSubscription: true, period: 'monthly', service: 'Netflix', nextRenewal: '2026-11-15' } },
-    // A receipt paid by card (not in the statement): kept as evidence, not counted as an expense.
-    { kind: 'txn', source: 'gmail-receipt', messageId: 'r2', date: '2026-10-20', direction: 'out', amount: 119_00, counterparty: 'Spotify', subscription: { isSubscription: true, period: 'monthly', service: 'Spotify' } },
-    // An old bank alert from before: ignored.
-    { kind: 'txn', source: 'gmail-alert', messageId: 'b1', date: '2026-10-21', direction: 'out', amount: 999_00, counterparty: 'Someone' },
-  ], 'gmail');
-  const all = buildTransactions(s);
-  const expenses = all.filter((t) => !t.evidence);
-  assert.equal(expenses.length, 4);
-  assert.ok(expenses.every((t) => t.source === 'phonepe'));
-  const netflix = expenses.find((t) => t.amount === 649_00);
-  assert.equal(netflix.counterparty, 'Netflix');
-  assert.ok(netflix.matched);
-  assert.deepEqual(netflix.sources.map((x) => x.kind), ['phonepe', 'gmail-receipt']);
-  assert.ok(all.find((t) => t.counterparty === 'Spotify').evidence);
-  assert.ok(!all.some((t) => t.amount === 999_00));
-  const subs = deriveSubscriptions(s, all, '2026-11-01');
-  assert.deepEqual(subs.map((x) => x.name).sort(), ['Netflix', 'Spotify']);
+test('statement rows are the transactions; re-reading adds nothing; old Gmail data is dropped', () => {
+  const rows = phonePeEvents(parsePhonePeStatement([page]), { fileName: 'oct.pdf' });
+  let s = ingestEvents(emptyStore(), rows, 'statement');
+  s = ingestEvents(s, rows, 'statement');
+  assert.equal(buildTransactions(s).length, 4);
+  // Data saved by an older version that read Gmail.
+  const old = {
+    ...s,
+    sync: { version: 2 },
+    txns: {
+      ...s.txns,
+      'g:r1': { id: 'g:r1', source: 'gmail', raw: { source: 'gmail-receipt', date: '2026-10-15', direction: 'out', amount: 64900, counterparty: 'Netflix' } },
+      'pp:T1': { id: 'pp:T1', source: 'phonepe', raw: { source: 'phonepe', messageId: 'm1', date: '2026-09-02', direction: 'out', amount: 100, counterparty: 'X' } },
+    },
+    subEvents: { m2: { id: 'm2', isSubscription: true, service: 'Spotify', status: 'failed', date: '2026-10-01' } },
+    statements: { 'm1:1': { id: 'm1:1', messageId: 'm1', status: 'read' }, 'file:a': { id: 'file:a', status: 'read' } },
+  };
+  const clean = dropEmailData(old);
+  assert.deepEqual(Object.keys(clean.txns).sort(), Object.keys(s.txns).sort());
+  assert.deepEqual(Object.keys(clean.statements), ['file:a']);
+  assert.deepEqual(clean.subEvents, {});
+  assert.equal(dropEmailData(clean), clean);
+  const all = buildTransactions(clean);
+  assert.ok(all.every((t) => t.source === 'phonepe'));
+  assert.equal(all.find((t) => t.amount === 64900).counterparty, 'Netflix Com');
+  assert.deepEqual(deriveSubscriptions(clean, all, '2026-11-01'), []);
 });

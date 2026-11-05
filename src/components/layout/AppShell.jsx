@@ -16,24 +16,18 @@ export const NAV = [
 ];
 
 function SyncStatus() {
-  const { scan, dataState, syncNow, session } = useApp();
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!scan.pausedUntil) return undefined;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [scan.pausedUntil]);
+  const { drive, dataState, syncNow, session } = useApp();
   let text;
-  if (scan.running) text = scan.pausedUntil ? `Google asked for a pause · resuming in ${Math.max(0, Math.ceil((scan.pausedUntil - now) / 1000))}s` : `Reading Gmail · ${scan.scanned} emails`;
+  if (drive.running) text = drive.total ? `Reading statements · ${drive.read} of ${drive.total}` : 'Checking Google Drive…';
   else if (dataState.error) text = `Couldn’t save on this device: ${dataState.error}`;
   else text = null;
   return (
     <div className="flex items-center gap-2">
       {text && <span className={cn('hidden text-[12.5px] md:inline', dataState.status === 'error' ? 'text-bad' : 'text-ink-3')}>{text}</span>}
-      {session.access?.gmail && (
-        <Button variant="secondary" size="sm" icon={scan.running ? undefined : 'RefreshCw'} onClick={() => syncNow()} disabled={scan.running} aria-label="Sync Gmail now">
-          {scan.running ? <Spinner size={15} /> : null}
-          <span className="hidden sm:inline">{scan.running ? 'Syncing' : 'Sync'}</span>
+      {session.access?.drive && (
+        <Button variant="secondary" size="sm" icon={drive.running ? undefined : 'RefreshCw'} onClick={() => syncNow()} disabled={drive.running} aria-label="Check Google Drive for new statements">
+          {drive.running ? <Spinner size={15} /> : null}
+          <span className="hidden sm:inline">{drive.running ? 'Syncing' : 'Sync'}</span>
         </Button>
       )}
     </div>
@@ -117,11 +111,11 @@ class ScreenBoundary extends Component {
 
 export default function AppShell() {
   const { pathname } = useLocation();
-  const { session, signIn, scan } = useApp();
+  const { session, signIn, drive } = useApp();
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
-  const reconnect = session.needsReconnect || scan.code === 'reconnect';
+  const reconnect = session.needsReconnect || drive.code === 'reconnect';
   return (
     <div className="min-h-svh pb-20 lg:pb-0 lg:pl-60">
       {/* Sidebar (desktop) */}
@@ -170,6 +164,14 @@ export default function AppShell() {
           <div className="flex flex-col gap-3 rounded-xl bg-warn-soft px-4 py-3 text-[14px] text-warn sm:flex-row sm:items-center sm:justify-between">
             <span className="flex items-center gap-2"><Icon name="TriangleAlert" size={17} /> Google access ended. Sign in again to keep syncing.</span>
             <Button size="sm" onClick={() => signIn().then(() => window.location.reload()).catch((e) => e.code !== 'popup_closed' && toast.error(e.message))}>Sign in again</Button>
+          </div>
+        </div>
+      )}
+      {!reconnect && session.user && session.access && !session.access.drive && (
+        <div className="mx-auto mt-4 max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-col gap-3 rounded-xl bg-primary-soft px-4 py-3 text-[14px] text-ink sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex items-center gap-2"><Icon name="FolderOpen" size={17} /> Recundle reads your PhonePe statements from Google Drive. Allow read-only Drive access to continue.</span>
+            <Button size="sm" onClick={() => signIn().catch((e) => e.code !== 'popup_closed' && toast.error(e.message))}>Allow Google Drive</Button>
           </div>
         </div>
       )}
