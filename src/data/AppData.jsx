@@ -4,7 +4,8 @@ import { api, ApiError } from './api';
 import { requestGoogleCode } from './google';
 import { addDays, addMonths, todayIso, uid } from '@/core/format';
 import { editTransaction, emptyStore, ingestEvents, newRule, normalise, patchRecord, putRecord, removeRecord, withAudit } from '@/core/store';
-import { deleteData, loadData, saveData } from './localdb';
+import { deleteData, loadData, loadSetting, saveData, saveSetting } from './localdb';
+import { phonePeEvents } from '@/core/phonepe';
 import { buildTransactions } from '@/core/transactions';
 import { deriveSubscriptions } from '@/core/subscriptions';
 import { deriveLoans, loanRecordFrom } from '@/core/loans';
@@ -20,6 +21,8 @@ const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
 
 const SCAN_STALE_MS = 6 * 3600_000;
+/** Bumped when what a scan reads changes, so older data is read again once (v2: PhonePe statements). */
+const SCAN_VERSION = 2;
 
 export function AppDataProvider({ children }) {
   const [session, setSession] = useState({ status: 'loading' });
@@ -28,6 +31,8 @@ export function AppDataProvider({ children }) {
   const [scan, setScan] = useState({ running: false, scanned: 0, found: 0, pausedUntil: null, error: null });
   const storeRef = useRef(store);
   const saveTimer = useRef(null);
+  const [ppPassword, setPpPassword] = useState(null);
+  const ppRef = useRef(null);
   const scanning = useRef(false);
   const emailRef = useRef(null);
   const email = session.user?.email ?? null;
@@ -66,6 +71,11 @@ export function AppDataProvider({ children }) {
     if (!email) return undefined;
     let cancelled = false;
     setDataState({ status: 'loading', error: null });
+    loadSetting(email, 'phonepePassword').then((v) => {
+      if (cancelled) return;
+      ppRef.current = v;
+      setPpPassword(v);
+    });
     loadData(email).then((data) => {
       if (cancelled) return;
       const loaded = normalise(data);
@@ -133,7 +143,7 @@ export function AppDataProvider({ children }) {
    * (`sync.pending`) are saved, so reloading or switching pages mid-scan resumes instead of restarting.
    */
   const runScan = useCallback(
-    async ({ after, before, pageToken: startToken = null }) => {
+    async ({ after, before, pageToken: startToken = null, full = false }) => {
       if (scanning.current) return;
       scanning.current = true;
       setScan({ running: true, scanned: 0, found: 0, pausedUntil: null, error: null });
@@ -142,14 +152,14 @@ export function AppDataProvider({ children }) {
       let found = 0;
       const savePending = (token) => {
         const s = storeRef.current;
-        storeRef.current = { ...s, sync: { ...s.sync, pending: { after: after ?? null, before: before ?? null, pageToken: token } } };
+        storeRef.current = { ...s, sync: { ...s.sync, pending: { after: after ?? null, before: before ?? null, pageToken: token, full } } };
       };
       try {
         savePending(pageToken);
         do {
           let page;
           try {
-            page = await api('gmail', { method: 'POST', body: { after, before, pageToken } });
+            page = await api('gmail', { method: 'POST', body: { after, before, pageToken, password: ppRef.current || undefined } });
           } catch (err) {
             if (err instanceof ApiError && err.code === 'rate_limited') {
               const wait = Math.min(120, err.body.retryAfter ?? 30);
@@ -184,6 +194,7 @@ export function AppDataProvider({ children }) {
             scannedTo: before && s.sync.scannedTo ? s.sync.scannedTo : todayIso(),
             messages: (s.sync.messages ?? 0) + scanned,
             pending: null,
+            version: full || s.sync.version === SCAN_VERSION ? SCAN_VERSION : (s.sync.version ?? 1),
           },
         };
         setStore(storeRef.current);
@@ -205,9 +216,33 @@ export function AppDataProvider({ children }) {
   const syncNow = useCallback(() => {
     const s = storeRef.current.sync;
     if (s.pending) return runScan(s.pending);
-    const after = s.scannedTo ? addDays(s.scannedTo, -3) : addMonths(todayIso(), -12);
-    return runScan({ after });
+    // First scan, or data from before PhonePe statements were read: read the last 12 months again.
+    if (!s.scannedTo || s.version !== SCAN_VERSION) return runScan({ after: addMonths(todayIso(), -12), full: true });
+    return runScan({ after: addDays(s.scannedTo, -3) });
   }, [runScan]);
+
+  /** Saves the PhonePe statement password on this device and re-reads statements it couldn't open. */
+  const setPhonePePassword = useCallback(
+    async (password) => {
+      const value = password?.trim() || null;
+      ppRef.current = value;
+      setPpPassword(value);
+      if (email) await saveSetting(email, 'phonepePassword', value);
+      if (!value) return { read: 0, locked: 0 };
+      const locked = Object.values(storeRef.current.statements).filter((x) => !x.deleted && (x.status === 'locked' || x.status === 'wrong_password'));
+      const ids = [...new Set(locked.map((x) => x.messageId))];
+      let read = 0;
+      for (let i = 0; i < ids.length; i += 20) {
+        const page = await api('gmail', { method: 'POST', body: { messageIds: ids.slice(i, i + 20), password: value } });
+        storeRef.current = ingestEvents(storeRef.current, page.events, 'gmail');
+        read += page.events.filter((e) => e.kind === 'statement' && e.status === 'read').length;
+      }
+      setStore(storeRef.current);
+      persist(true);
+      return { read, locked: Object.values(storeRef.current.statements).filter((x) => x.status === 'locked' || x.status === 'wrong_password').length };
+    },
+    [email, persist],
+  );
 
   /** Reads older mail, back to `months` ago. */
   const scanHistory = useCallback(
@@ -227,14 +262,17 @@ export function AppDataProvider({ children }) {
     autoSynced.current = email;
     const s = storeRef.current.sync;
     const last = Date.parse(s.lastScanAt ?? '') || 0;
-    if (s.pending || Date.now() - last > SCAN_STALE_MS) syncNow();
+    if (s.pending || s.version !== SCAN_VERSION || Date.now() - last > SCAN_STALE_MS) syncNow();
   }, [email, session.access?.gmail, dataState.status, syncNow]);
 
   // ── Derived views ─────────────────────────────────────────────────────
   const today = todayIso();
-  const txns = useMemo(() => buildTransactions(store, { ownNames: [session.user?.name] }), [store, session.user?.name]);
-  const subscriptions = useMemo(() => deriveSubscriptions(store, txns, today), [store, txns, today]);
-  const loanView = useMemo(() => deriveLoans(store, txns, today), [store, txns, today]);
+  // Every payment seen, including receipts and lender emails with no matching statement row…
+  const allTxns = useMemo(() => buildTransactions(store, { ownNames: [session.user?.name] }), [store, session.user?.name]);
+  // …but expenses count only statement rows (PhonePe, imported statements) and payments you added.
+  const txns = useMemo(() => allTxns.filter((t) => !t.evidence), [allTxns]);
+  const subscriptions = useMemo(() => deriveSubscriptions(store, allTxns, today), [store, allTxns, today]);
+  const loanView = useMemo(() => deriveLoans(store, allTxns, today), [store, allTxns, today]);
   const todos = useMemo(() => Object.values(store.todos).filter((t) => !t.deleted), [store.todos]);
 
   // ── Actions ────────────────────────────────────────────────────────────
@@ -256,10 +294,23 @@ export function AppDataProvider({ children }) {
         return id;
       },
       deleteManualTransaction: (id) => update((s) => withAudit(removeRecord(s, 'txns', id), 'Deleted transaction', id)),
+      /** A PhonePe statement PDF picked from the device (for months that aren't in Gmail). */
+      importPhonePePdf: async (file, password) => {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let bin = '';
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        const parsed = await api('statement', { method: 'POST', body: { pdf: btoa(bin), password: password || ppRef.current || undefined } });
+        const record = { kind: 'statement', id: `file:${file.name}:${parsed.period?.from ?? todayIso()}`, fileName: file.name, date: todayIso(), status: parsed.txns.length ? 'read' : 'empty', period: parsed.period, rows: parsed.txns.length, skipped: parsed.skipped, uploaded: true };
+        const before = Object.keys(storeRef.current.txns).length;
+        update((s) => withAudit(ingestEvents(s, [record, ...phonePeEvents(parsed, { fileName: file.name })], 'statement'), 'Imported PhonePe statement', `${file.name} · ${parsed.txns.length} rows`));
+        persist(true);
+        return { rows: parsed.txns.length, skipped: parsed.skipped, added: Object.keys(storeRef.current.txns).length - before, period: parsed.period };
+      },
       importStatement: (text, opts) => {
         const result = statementToEvents(text, opts);
         const before = Object.keys(storeRef.current.txns).length;
         update((s) => withAudit(ingestEvents(s, result.events, 'statement'), 'Imported statement', `${result.events.length} rows${opts?.account ? ` · ${opts.account}` : ''}`));
+        persist(true);
         return { ...result, added: Object.keys(storeRef.current.txns).length - before };
       },
       setSubscription: (key, patch) =>
@@ -316,7 +367,7 @@ export function AppDataProvider({ children }) {
         toast.success('All Recundle data on this device was deleted.');
       },
     }),
-    [update, email],
+    [update, email, persist],
   );
 
   const value = {
@@ -329,6 +380,9 @@ export function AppDataProvider({ children }) {
     scan,
     syncNow,
     scanHistory,
+    phonepePassword: ppPassword,
+    setPhonePePassword,
+    statements: Object.values(store.statements ?? {}).filter((x) => !x.deleted).sort((a, b) => (b.period?.from ?? b.date).localeCompare(a.period?.from ?? a.date)),
     txns,
     subscriptions,
     loans: loanView.loans,

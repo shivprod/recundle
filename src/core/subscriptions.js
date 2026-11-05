@@ -1,4 +1,4 @@
-import { entityKey } from './entities.js';
+import { entityKey, similarity } from './entities.js';
 import { addDays, addMonths, daysBetween } from './format.js';
 import { live } from './store.js';
 
@@ -85,6 +85,20 @@ export function deriveSubscriptions(store, txns, today) {
     g.events.push(e);
     g.explicit = true;
   }
+  // Statement payments to a service that subscription emails already name (e.g. "NETFLIX COM" and
+  // Netflix's renewal emails) are that subscription's payments, even without a receipt.
+  const named = [...groups.values()].filter((g) => g.explicit);
+  const taken = new Set([...groups.values()].flatMap((g) => g.payments.map((p) => p.id)));
+  for (const t of txns) {
+    if (t.excluded || t.direction !== 'out' || taken.has(t.id) || t.subscriptionKey === '' || !t.entityKey) continue;
+    if (['emi', 'rent', 'personal_transfers'].includes(t.category)) continue;
+    const g = named.find((x) => x.key && (t.entityKey === x.key || t.entityKey.startsWith(x.key) || similarity(t.entityKey, x.key) >= 0.75));
+    if (g) {
+      g.payments.push(t);
+      taken.add(t.id);
+    }
+  }
+
   // Pattern-only candidates: regular payments to a payee that no receipt has labelled.
   const claimed = new Set([...groups.values()].flatMap((g) => g.payments.map((p) => p.id)));
   const byPayee = new Map();

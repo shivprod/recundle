@@ -4,7 +4,7 @@ import { parseReceipt } from './receipt.js';
 
 /**
  * One email → zero or more events:
- *  - { kind: 'txn' }  money that moved (bank alert, receipt, EMI receipt)
+ *  - { kind: 'txn' }  a receipt or EMI receipt: evidence matched to PhonePe statement rows
  *  - { kind: 'sub' }  subscription facts without a payment (trial, failed payment, cancellation, reminder)
  *  - { kind: 'loan' } a loan event (sanction, disbursal, EMI, statement, closure, NOC)
  * Pure: no I/O, so it can be tested with sample emails.
@@ -17,7 +17,7 @@ export function parseEmail(email) {
       events.push(loan);
       // A lender's "EMI received" email is also money out; duplicates with the bank alert are merged later.
       const alert = parseBankAlert(email);
-      if (alert && alert.direction === 'out') events.push({ ...alert, loanHint: { lender: loan.lender, account: loan.account } });
+      if (alert && alert.direction === 'out') events.push({ ...alert, source: 'gmail-loan', loanHint: { lender: loan.lender, account: loan.account } });
       else if (loan.purpose === 'emi_paid' && loan.amount) {
         events.push({
           kind: 'txn',
@@ -52,15 +52,15 @@ export function parseEmail(email) {
       return events;
     }
   }
-  const alert = parseBankAlert(email);
-  if (alert) return [alert];
+  // Money movements come only from PhonePe statements; bank alerts are not read. Receipts and
+  // subscription emails are kept as evidence that is matched to the statement's rows.
   return parseReceipt(email);
 }
 
-/** The Gmail search for everything Recundle reads: payment alerts, receipts, subscriptions and loans. */
+/** The Gmail search for everything Recundle reads: PhonePe statements, receipts, subscriptions and loans. */
 export function gmailQuery({ after, before } = {}) {
   const terms = [
-    'debited', 'credited', '"has been debited"', '"has been credited"', '"transaction alert"', 'upi', '"spent on"',
+    '(from:phonepe statement)', '(phonepe "monthly statement")',
     'receipt', 'invoice', '"payment received"', '"payment successful"', '"your order"', 'subscription', 'renewal', '"free trial"', '"payment failed"', 'membership',
     'emi', 'loan', 'disbursed', 'instalment', '"no objection certificate"', 'noc', '"no dues"', 'foreclosure', '"loan closure"', 'sanction',
   ];

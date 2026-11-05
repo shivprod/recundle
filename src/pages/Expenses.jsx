@@ -40,7 +40,9 @@ export default function Expenses() {
   const { txns, store, subscriptions, today, session, scan, syncNow } = useApp();
   const [get, set] = useParamState();
   const tab = get('tab', 'overview');
-  const periodId = get('period', 'this_month');
+  // PhonePe statements arrive after a month ends: until this month has rows, open on the previous month.
+  const defaultPeriod = useMemo(() => (txns.some((t) => t.date >= `${monthKey(today)}-01`) ? 'this_month' : 'last_month'), [txns, today]);
+  const periodId = get('period', defaultPeriod);
   const custom = { from: get('from'), to: get('to') };
   const range = useMemo(() => periodRange(periodId, today, custom), [periodId, today, custom.from, custom.to]);
   const cats = useMemo(() => categoryMap(store.categories), [store.categories]);
@@ -61,7 +63,7 @@ export default function Expenses() {
       subtitle="Where your money comes from and where it goes."
       actions={
         <>
-          <Button variant="outline" size="sm" icon="FileUp" onClick={() => setImporting(true)}>Import statement</Button>
+          <Button variant="outline" size="sm" icon="FileUp" onClick={() => setImporting(true)}>Add statement</Button>
           <Button variant="outline" size="sm" icon="Plus" onClick={() => setAdding(true)}>Add</Button>
         </>
       }
@@ -75,21 +77,21 @@ export default function Expenses() {
         <Card>
           <Empty icon={scan.running ? 'LoaderCircle' : 'Wallet'} title={scan.running ? `Reading your Gmail… ${scan.scanned} emails checked` : 'No transactions yet'}>
             {scan.running
-              ? 'Payment alerts, receipts and loan emails are being read. Transactions appear here as they are found.'
+              ? 'PhonePe monthly statements, receipts and loan emails are being read. Transactions appear here as they are found.'
               : session.access?.gmail
-                ? 'Sync Gmail to read your bank alerts and receipts, or import a bank statement (CSV) for complete history including money received.'
-                : 'Gmail access was not granted. Import a bank statement (CSV) or sign in again and allow Gmail.'}
+                ? 'Expenses come from your PhonePe monthly statement emails. None were found yet: check that PhonePe emails you a monthly statement, or add a statement PDF downloaded from the PhonePe app.'
+                : 'Gmail access was not granted. Add a PhonePe statement PDF, or sign in again and allow Gmail.'}
           </Empty>
           <div className="flex flex-wrap justify-center gap-2 pb-4">
             {session.access?.gmail && !scan.running && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Gmail</Button>}
-            <Button variant="outline" icon="FileUp" onClick={() => setImporting(true)}>Import statement</Button>
+            <Button variant="outline" icon="FileUp" onClick={() => setImporting(true)}>Add statement PDF</Button>
           </div>
         </Card>
       ) : (
         <>
           <div className="mb-4 flex flex-col gap-3">
             <Segmented id="exp-tabs" label="Expenses sections" value={tab} onChange={(v) => set({ tab: v })} options={TABS} className="self-start" />
-            {tab !== 'rules' && <PeriodPicker value={periodId} custom={custom} onChange={(v) => set({ period: v === 'this_month' ? null : v })} onCustom={(c) => set({ from: c.from, to: c.to })} />}
+            {tab !== 'rules' && <PeriodPicker value={periodId} custom={custom} onChange={(v) => set({ period: v === defaultPeriod ? null : v })} onCustom={(c) => set({ from: c.from, to: c.to })} />}
           </div>
 
           {tab === 'overview' && <Overview m={m} range={range} txns={txns} inPeriod={inPeriod} subscriptions={subscriptions} store={store} cats={cats} showTxns={showTxns} setPayee={setPayee} openTxn={setOpenTxn} today={today} />}

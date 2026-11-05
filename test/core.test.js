@@ -7,7 +7,7 @@ import { statementToEvents } from '../src/core/csv.js';
 import { entityKey, similarity, looksLikePerson } from '../src/core/entities.js';
 
 // All data here is made up.
-const ev = (id, over) => ({ kind: 'txn', source: 'gmail-alert', messageId: id, date: '2026-10-05', direction: 'out', amount: 50000, counterparty: 'Someone', ...over });
+const ev = (id, over) => ({ kind: 'txn', source: 'phonepe', rowId: `pp:${id}`, messageId: 'stmt', date: '2026-10-05', direction: 'out', amount: 50000, counterparty: 'Someone', ...over });
 
 function sample() {
   return ingestEvents(emptyStore(), [
@@ -62,10 +62,10 @@ test('a rule re-classifies every matching payment, past and future; a manual edi
   // A new payment from the same payee arrives later: the rule applies.
   s = ingestEvents(s, [ev('a9', { counterparty: 'RAHUL KUMAR', amount: 2500_00, date: '2026-11-03' })]);
   txns = buildTransactions(s);
-  assert.equal(txns.find((t) => t.id === 'g:a9').category, 'rent');
+  assert.equal(txns.find((t) => t.id === 'pp:a9').category, 'rent');
   // An individual override wins over the rule.
-  s = editTransaction(s, 'g:a1', { category: 'personal_transfers' });
-  assert.equal(buildTransactions(s).find((t) => t.id === 'g:a1').category, 'personal_transfers');
+  s = editTransaction(s, 'pp:a1', { category: 'personal_transfers' });
+  assert.equal(buildTransactions(s).find((t) => t.id === 'pp:a1').category, 'personal_transfers');
 });
 
 test('metrics: income, expenses net of refunds, cash flow', () => {
@@ -109,11 +109,11 @@ test('insights always point at the transactions behind them', () => {
 test('two devices merge record by record', () => {
   const base = sample();
   for (const t of Object.values(base.txns)) t.updatedAt = '2020-01-01T00:00:00.000Z';
-  const a = editTransaction(base, 'g:a1', { notes: 'from phone' });
-  const b = editTransaction(base, 'g:a3', { category: 'groceries' });
+  const a = editTransaction(base, 'pp:a1', { notes: 'from phone' });
+  const b = editTransaction(base, 'pp:a3', { category: 'groceries' });
   const m = mergeStores(a, b);
-  assert.equal(m.txns['g:a1'].user.notes, 'from phone');
-  assert.equal(m.txns['g:a3'].user.category, 'groceries');
+  assert.equal(m.txns['pp:a1'].user.notes, 'from phone');
+  assert.equal(m.txns['pp:a3'].user.category, 'groceries');
 });
 
 test('statement CSV import with UPI narration, and re-import adds nothing', () => {

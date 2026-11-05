@@ -20,7 +20,26 @@ function Row({ icon, title, children, status }) {
 }
 
 export default function Settings() {
-  const { session, store, scan, syncNow, scanHistory, signIn, signOut, actions } = useApp();
+  const { session, store, scan, syncNow, scanHistory, signIn, signOut, actions, statements, phonepePassword, setPhonePePassword } = useApp();
+  const [pw, setPw] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const locked = statements.filter((x) => x.status === 'locked' || x.status === 'wrong_password');
+  const read = statements.filter((x) => x.status === 'read');
+  const savePw = async (value) => {
+    setPwBusy(true);
+    try {
+      const r = await setPhonePePassword(value);
+      setPw('');
+      if (!value) toast.success('Password removed from this device');
+      else if (r.read) toast.success(`Opened ${plural(r.read, 'statement')}`);
+      else if (r.locked) toast.error('That password did not open the locked statements.');
+      else toast.success('Password saved on this device');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setPwBusy(false);
+    }
+  };
   const navigate = useNavigate();
   const [months, setMonths] = useState('24');
   const [importing, setImporting] = useState(false);
@@ -46,7 +65,7 @@ export default function Settings() {
       <Card>
         <CardHead title="Google account" icon="CircleUserRound" />
         <Row icon="Mail" title="Gmail (read-only)" status={a.gmail ? <Badge tone="good" icon="Check">Connected</Badge> : <Button size="sm" onClick={reconnect}>Allow Gmail</Button>}>
-          Reads payment alerts, receipts, subscription and loan emails. Recundle can't send, delete or change email.
+          Reads your PhonePe monthly statements, plus receipts, subscription and loan emails to match against them. Recundle can't send, delete or change email.
         </Row>
         <Row icon="Smartphone" title="Your data" status={<Badge tone="info">On this device</Badge>}>
           Saved in this browser (IndexedDB). It isn't sent to Recundle's servers or synced to other devices. Download a backup below to keep a copy.
@@ -80,9 +99,36 @@ export default function Settings() {
       </Card>
 
       <Card>
-        <CardHead title="Import" icon="FileUp" />
-        <p className="text-[13.5px] text-ink-2">Google Pay, PhonePe and banks don't let other apps read your transactions directly. Import a bank statement (CSV from net banking) to add money received, UPI transfers and anything not emailed. Duplicates with Gmail are matched automatically.</p>
-        <Button className="mt-3" variant="outline" icon="FileUp" onClick={() => setImporting(true)}>Import a bank statement</Button>
+        <CardHead title="PhonePe statements" subtitle="Your expenses come from these" icon="FileSpreadsheet" />
+        <p className="text-[13.5px] text-ink-2">
+          Recundle reads the PDF attached to each <b>PhonePe monthly statement</b> email. Every payment and credit in it becomes a transaction. Receipts, subscription emails and lender emails are then matched to those rows to name the merchant, find subscriptions and track loan EMIs. Bank alerts are not read.
+        </p>
+        <p className="mt-2 text-[13.5px] text-ink-2">
+          {statements.length ? `${plural(read.length, 'statement')} read${locked.length ? `, ${locked.length} locked` : ''}.` : 'No PhonePe statements found yet.'}
+          {read[0]?.period ? ` Latest covers ${shortDate(read[0].period.from, true)} – ${shortDate(read[0].period.to, true)}.` : ''}
+        </p>
+        {statements.length > 0 && (
+          <ul className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-line text-[13px]">
+            {statements.slice(0, 24).map((x) => (
+              <li key={x.id} className="flex items-center justify-between gap-2 border-b border-line px-3 py-2 last:border-0">
+                <span className="min-w-0 truncate">{x.period ? `${shortDate(x.period.from, true)} – ${shortDate(x.period.to, true)}` : x.subject ?? x.fileName}</span>
+                {x.status === 'read' ? <Badge tone="good">{plural(x.rows, 'row')}</Badge> : x.status === 'locked' ? <Badge tone="warn" icon="Lock">Locked</Badge> : x.status === 'wrong_password' ? <Badge tone="bad" icon="Lock">Wrong password</Badge> : <Badge>{x.status === 'empty' ? 'No rows' : 'Unreadable'}</Badge>}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-[13.5px] font-semibold">Statement password</p>
+          <p className="text-[13px] text-ink-3">
+            If your statement PDFs are password-protected, enter the password (the PhonePe email says what it is). It is saved only in this browser and sent only to open the PDFs while syncing. {phonepePassword ? 'A password is saved.' : 'No password saved.'}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input type="password" autoComplete="off" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={phonepePassword ? '••••••••' : 'PDF password'} className="sm:max-w-xs" aria-label="PhonePe statement password" />
+            <Button onClick={() => savePw(pw)} disabled={!pw || pwBusy || !a.gmail}>{pwBusy ? 'Opening…' : locked.length ? 'Save and open locked statements' : 'Save'}</Button>
+            {phonepePassword && <Button variant="ghost" onClick={() => savePw(null)} disabled={pwBusy}>Remove</Button>}
+          </div>
+        </div>
+        <Button className="mt-4" variant="outline" icon="FileUp" onClick={() => setImporting(true)}>Add a statement PDF</Button>
       </Card>
 
       <Card>

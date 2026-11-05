@@ -6,7 +6,7 @@ import { uid } from './format.js';
  * `raw` fields come from Gmail or an imported statement and are never edited; everything the user
  * changes lives in `user`, which always takes precedence.
  */
-export const COLLECTIONS = ['txns', 'subEvents', 'loanEvents', 'rules', 'categories', 'subscriptions', 'loans', 'todos'];
+export const COLLECTIONS = ['txns', 'subEvents', 'loanEvents', 'statements', 'rules', 'categories', 'subscriptions', 'loans', 'todos'];
 
 export function emptyStore() {
   return {
@@ -54,6 +54,7 @@ export function mergeStores(a, b) {
     scannedFrom: [A.sync.scannedFrom, B.sync.scannedFrom].filter(Boolean).sort()[0] ?? null,
     scannedTo: [A.sync.scannedTo, B.sync.scannedTo].filter(Boolean).sort().pop() ?? null,
     messages: Math.max(A.sync.messages ?? 0, B.sync.messages ?? 0),
+    version: Math.min(A.sync.version ?? 1, B.sync.version ?? 1),
   };
   out.updatedAt = [A.updatedAt, B.updatedAt].filter(Boolean).sort().pop() ?? null;
   return out;
@@ -109,9 +110,16 @@ export function ingestEvents(store, events, source = 'gmail') {
     next = { ...next, updatedAt: stamped.updatedAt, [collection]: { ...next[collection], [id]: stamped } };
   };
   for (const e of events) {
-    if (e.kind === 'txn') {
+    if (e.kind === 'txn' && e.source === 'phonepe') {
+      const { kind, ...raw } = e;
+      add('txns', e.rowId, { source: 'phonepe', raw });
+    } else if (e.kind === 'txn') {
       const { kind, ...raw } = e;
       add('txns', `${source === 'gmail' ? 'g' : 's'}:${e.messageId ?? e.rowId}`, { source, raw });
+    } else if (e.kind === 'statement') {
+      // Statement status changes (locked → read) so it is always replaced.
+      const stamped = { ...e, id: e.id, updatedAt: now() };
+      next = { ...next, updatedAt: stamped.updatedAt, statements: { ...next.statements, [e.id]: stamped } };
     } else if (e.kind === 'sub') add('subEvents', e.messageId, e);
     else if (e.kind === 'loan') add('loanEvents', e.messageId, e);
   }

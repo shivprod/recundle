@@ -8,7 +8,7 @@ import { useApp } from '@/data/AppData';
 import { Amount, ClassifiedBadge } from './common';
 
 const RULE_FIELDS = ['category', 'subcategory', 'type', 'counterparty', 'purpose', 'subscription'];
-const SOURCE_LABEL = { 'gmail-alert': 'Bank alert (Gmail)', 'gmail-receipt': 'Receipt (Gmail)', 'gmail-loan': 'Lender email (Gmail)', statement: 'Imported statement', manual: 'Added by you' };
+const SOURCE_LABEL = { phonepe: 'PhonePe statement', 'gmail-alert': 'Bank alert (Gmail)', 'gmail-receipt': 'Receipt (Gmail)', 'gmail-loan': 'Lender email (Gmail)', statement: 'Imported statement', manual: 'Added by you' };
 
 /**
  * Everything about one transaction, editable. When the category, type or payee name changes,

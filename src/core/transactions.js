@@ -12,7 +12,10 @@ import { live } from './store.js';
  * are folded into one transaction so nothing is counted twice.
  */
 
-const SOURCE_RANK = { statement: 0, 'gmail-alert': 1, 'gmail-loan': 2, 'gmail-receipt': 3, manual: 4 };
+const SOURCE_RANK = { phonepe: 0, statement: 1, 'gmail-alert': 2, 'gmail-loan': 3, 'gmail-receipt': 4, manual: 5 };
+const STATEMENT_KINDS = new Set(['phonepe', 'statement']);
+/** Emails that describe a payment but are not a source of money movements on their own. */
+const EVIDENCE_KINDS = new Set(['gmail-receipt', 'gmail-loan']);
 const sourceKind = (t) => (t.source === 'gmail' ? t.raw.source : t.source);
 
 /** The rule (if any) that applies to a raw transaction. */
@@ -47,7 +50,7 @@ export function findDuplicates(records) {
         const kb = entityKey(b.raw.counterparty);
         const similar = similarity(ka, kb) >= 0.5 || !ka || !kb;
         // Same message source twice needs a matching reference; across sources a close name or date match is enough.
-        const isDup = sameRef || (kindA !== kindB && (similar || (gap <= 1 && (kindA === 'statement' || kindB === 'statement'))));
+        const isDup = sameRef || (kindA !== kindB && (similar || (gap <= 1 && (STATEMENT_KINDS.has(kindA) || STATEMENT_KINDS.has(kindB)))));
         if (isDup) dupes.set(b.id, a.id);
       }
     }
@@ -60,8 +63,14 @@ function pickName(t, rule, partner) {
   return t.user?.counterparty ?? rule?.set?.counterparty ?? (partner && sourceKind(partner) === 'gmail-receipt' ? partner.raw.counterparty : null) ?? t.raw.counterparty ?? t.raw.vpa ?? (t.raw.description ? t.raw.description.slice(0, 40) : null) ?? 'Unknown payee';
 }
 
+/**
+ * Expenses come from PhonePe statements (plus statements you import and payments you add). Receipts
+ * and lender emails are matched to those rows and lend them their details; an email with no matching
+ * row is returned with `evidence: true`, so Subscriptions and Loans can still use it while Expenses
+ * leave it out. Bank alerts read by earlier versions are ignored.
+ */
 export function buildTransactions(store, { ownNames = [] } = {}) {
-  const records = live(store.txns).filter((t) => t.raw?.amount > 0 && t.raw?.date);
+  const records = live(store.txns).filter((t) => t.raw?.amount > 0 && t.raw?.date && sourceKind(t) !== 'gmail-alert');
   const rules = live(store.rules);
   const dupes = findDuplicates(records);
   const partners = new Map();
@@ -120,6 +129,8 @@ export function buildTransactions(store, { ownNames = [] } = {}) {
       confidence: classifiedBy === 'user' ? 1 : rule ? 0.95 : guess.confidence,
       reason: classifiedBy === 'user' ? 'You set this' : rule ? `Your rule for ${rule.label ?? counterparty}` : guess.reason,
       excluded: Boolean(u.excluded),
+      evidence: EVIDENCE_KINDS.has(sourceKind(t)),
+      matched: linked.length > 0,
       rawCounterparty: raw.counterparty ?? null,
       rawKey,
     });

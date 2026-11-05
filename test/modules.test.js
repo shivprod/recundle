@@ -34,7 +34,7 @@ test('a cancellation email after the last payment cancels; the user can override
 });
 
 test('regular payments without a receipt are a candidate, not a confirmed subscription', () => {
-  const pay = (id, date) => ({ kind: 'txn', source: 'gmail-alert', messageId: id, date, direction: 'out', amount: 299_00, counterparty: 'Gym Studio Pvt Ltd', method: 'Card' });
+  const pay = (id, date) => ({ kind: 'txn', source: 'phonepe', rowId: `pp:${id}`, messageId: 'stmt', date, direction: 'out', amount: 299_00, counterparty: 'Gym Studio Pvt Ltd', method: 'Card' });
   const s = ingestEvents(emptyStore(), [pay('g1', '2026-07-05'), pay('g2', '2026-08-05'), pay('g3', '2026-09-05'), pay('g4', '2026-10-05')]);
   const [sub] = deriveSubscriptions(s, buildTransactions(s), TODAY);
   assert.equal(sub.status, 'needs_verification');

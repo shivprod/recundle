@@ -51,6 +51,7 @@ export async function saveData(email, data) {
 export async function deleteData(email) {
   try {
     await tx('readwrite', (s) => s.delete(key(email)));
+    await tx('readwrite', (s) => s.delete(`setting:${email}:phonepePassword`));
   } catch {
     /* ignore */
   }
@@ -58,5 +59,22 @@ export async function deleteData(email) {
     localStorage.removeItem(`recundle.${key(email)}`);
   } catch {
     /* ignore */
+  }
+}
+
+/** A small per-account setting kept only on this device (for example the PhonePe statement password). */
+export async function loadSetting(email, name) {
+  try {
+    return (await tx('readonly', (s) => s.get(`setting:${email}:${name}`))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveSetting(email, name, value) {
+  try {
+    await tx('readwrite', (s) => (value == null ? s.delete(`setting:${email}:${name}`) : s.put(value, `setting:${email}:${name}`)));
+  } catch {
+    /* not saved; asked again next time */
   }
 }

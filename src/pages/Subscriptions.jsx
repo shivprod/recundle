@@ -73,7 +73,7 @@ export default function Subscriptions() {
 
   return (
     <div>
-      <PageHeader title="Subscriptions" subtitle="Every recurring payment found in your receipts and bank alerts." actions={<Button variant="outline" size="sm" icon="Plus" onClick={() => setAdding(true)}>Add subscription</Button>} />
+      <PageHeader title="Subscriptions" subtitle="Recurring payments from your PhonePe statements, matched with subscription emails and receipts." actions={<Button variant="outline" size="sm" icon="Plus" onClick={() => setAdding(true)}>Add subscription</Button>} />
       {subscriptions.length === 0 ? (
         <Card>
           <Empty icon="Repeat" title="No subscriptions found yet">

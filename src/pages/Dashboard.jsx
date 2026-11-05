@@ -18,7 +18,11 @@ function greeting() {
 export default function Dashboard() {
   const { session, txns, subscriptions, loans, todos, today, scan, syncNow, dataState } = useApp();
   const navigate = useNavigate();
-  const range = useMemo(() => periodRange('this_month', today), [today]);
+  // Statements arrive after a month ends, so until this month has any rows, show the latest month.
+  const current = useMemo(() => txns.some((t) => t.date >= `${monthKey(today)}-01`), [txns, today]);
+  const range = useMemo(() => periodRange(current ? 'this_month' : 'last_month', today), [today, current]);
+  const monthName = new Date(`${range.from}T00:00:00`).toLocaleDateString('en-IN', { month: 'long' });
+  const when = current ? 'this month' : `· ${monthName}`;
   const m = useMemo(() => metrics(txns, range), [txns, range]);
   const prev = useMemo(() => metrics(txns, range.previous), [txns, range]);
   const series = useMemo(() => monthlySeries(txns, monthKey(today), 6), [txns, today]);
@@ -37,7 +41,7 @@ export default function Dashboard() {
   if (prev.expenses > 0 && m.expenses > 0) {
     // Compares the same days of last month, so a half-finished month isn't flattered.
     const ch = (m.expenses - prev.expenses) / prev.expenses;
-    if (Math.abs(ch) >= 0.1) insights.push({ icon: ch > 0 ? 'TrendingUp' : 'TrendingDown', tone: ch > 0 ? 'warn' : 'good', text: `Spending is ${ch > 0 ? 'up' : 'down'} ${pct(Math.abs(ch))} on the same days last month (${inr(m.expenses)} vs ${inr(prev.expenses)}).`, to: '/expenses' });
+    if (Math.abs(ch) >= 0.1) insights.push({ icon: ch > 0 ? 'TrendingUp' : 'TrendingDown', tone: ch > 0 ? 'warn' : 'good', text: `Spending is ${ch > 0 ? 'up' : 'down'} ${pct(Math.abs(ch))} on ${current ? 'the same days last month' : 'the month before'} (${inr(m.expenses)} vs ${inr(prev.expenses)}).`, to: '/expenses' });
   }
   if (subs.upcoming[0]) {
     const s = subs.upcoming[0];
@@ -60,7 +64,7 @@ export default function Dashboard() {
         <p className="label-mono text-ink-3">01 / {greeting()}</p>
         <h1 className="mt-1 text-[34px] font-medium leading-tight sm:text-[46px]">{first ? <>Hi {first}, <span className="text-ink/45">here’s your month.</span></> : 'Welcome.'}</h1>
         <p className="mt-1 text-[14px] text-ink-2">
-          {scan.running ? `Reading your Gmail… ${scan.scanned} emails checked so far.` : dataState.status === 'loading' ? 'Loading your data…' : `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.`}
+          {scan.running ? `Reading your Gmail… ${scan.scanned} emails checked so far.` : dataState.status === 'loading' ? 'Loading your data…' : current || !txns.length ? `Here's where things stand in ${new Date().toLocaleDateString('en-IN', { month: 'long' })}.` : `Showing ${monthName}, from your latest PhonePe statement.`}
         </p>
         </div>
       </div>
@@ -68,14 +72,14 @@ export default function Dashboard() {
       {nothing && !scan.running && (
         <Card>
           <Empty icon="Sparkles" title="Let's find your finances" action={<div className="flex flex-wrap justify-center gap-2">{session.access?.gmail && <Button icon="RefreshCw" onClick={() => syncNow()}>Sync Gmail</Button>}<Button variant="outline" icon="FileUp" onClick={() => navigate('/expenses?tab=overview')}>Import a statement</Button><Button variant="outline" icon="ListTodo" onClick={() => navigate('/todos')}>Add to-dos</Button></div>}>
-            Recundle reads payment alerts, receipts and loan emails from the last 12 months. Bank statements (CSV) add money received and anything not emailed.
+            Recundle reads your PhonePe monthly statements from the last 12 months, and matches receipts, subscription and loan emails to them.
           </Empty>
         </Card>
       )}
 
       <section aria-label="Financial snapshot" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile label="Money in this month" value={inr(m.moneyIn)} icon="ArrowDownLeft" tone="good" sub={m.income ? `${inr(m.income)} income` : 'No income found yet'} onClick={() => navigate('/expenses?tab=in')} />
-        <Tile label="Money out this month" value={inr(m.moneyOut)} icon="ArrowUpRight" tone="warn" sub={`${plural(txns.filter((t) => t.direction === 'out' && t.date >= range.from).length, 'payment')}`} onClick={() => navigate('/expenses?tab=transactions&dir=out')} />
+        <Tile label={`Money in ${when}`} value={inr(m.moneyIn)} icon="ArrowDownLeft" tone="good" sub={m.income ? `${inr(m.income)} income` : 'No income found yet'} onClick={() => navigate('/expenses?tab=in')} />
+        <Tile label={`Money out ${when}`} value={inr(m.moneyOut)} icon="ArrowUpRight" tone="warn" sub={`${plural(txns.filter((t) => t.direction === 'out' && t.date >= range.from).length, 'payment')}`} onClick={() => navigate(`/expenses?tab=transactions&dir=out${current ? '' : '&period=last_month'}`)} />
         <Tile label="Net cash flow" value={inr(m.netCashFlow, { sign: true })} icon="ArrowLeftRight" tone={m.netCashFlow >= 0 ? 'good' : 'bad'} emphasis sub="Money in − money out" onClick={() => navigate('/expenses')} />
         <Tile label="Loans outstanding" value={inr(lt.outstanding)} icon="Landmark" sub={lt.active ? `${plural(lt.active, 'active loan')}${lt.outstandingEstimated ? ' · incl. estimates' : ''}` : 'No active loans'} onClick={() => navigate('/loans')} />
       </section>

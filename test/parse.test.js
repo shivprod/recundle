@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseEmail } from '../server/parse/index.js';
+import { parseBankAlert } from '../server/parse/bank.js';
 import { parseLooseDate } from '../server/parse/text.js';
 
 // Every email here is made up.
 const email = (over) => ({ id: 'm1', from: 'Someone <someone@example.com>', subject: '', date: '2026-10-08', snippet: '', body: '', attachments: [], ...over });
 
 test('UPI debit to a person: amount, name, UPI ID, reference, account', () => {
-  const [e] = parseEmail(email({
+  const e = parseBankAlert(email({
     from: 'HDFC Bank InstaAlerts <alerts@hdfcbank.net>',
     subject: 'You have done a UPI txn. Check details!',
     body: 'Dear Customer, Rs.2,500.00 has been debited from account **4321 to VPA rahulk.demo@okaxis RAHUL KUMAR on 05-10-26. Your UPI transaction reference number is 527812345678.',
@@ -25,7 +26,7 @@ test('UPI debit to a person: amount, name, UPI ID, reference, account', () => {
 });
 
 test('salary credit by NEFT', () => {
-  const [e] = parseEmail(email({
+  const e = parseBankAlert(email({
     from: 'ICICI Bank <alerts@icicibank.com>',
     subject: 'Transaction alert for your ICICI Bank account',
     body: 'Your A/c XX7788 has been credited with INR 85,000.00 on 01-Oct-26 by ACME TECH PVT LTD via NEFT. Avl Bal INR 1,20,000.00',
@@ -37,7 +38,7 @@ test('salary credit by NEFT', () => {
 });
 
 test('card spend at a merchant', () => {
-  const [e] = parseEmail(email({
+  const e = parseBankAlert(email({
     from: 'Axis Bank Alerts <alerts@axisbank.com>',
     subject: 'Transaction alert on your Axis Bank Credit Card',
     body: 'INR 1,249.00 spent on your Axis Bank Credit Card ending 9012 at SWIGGY on 06-10-2026. Available limit INR 50,000.',
@@ -47,6 +48,11 @@ test('card spend at a merchant', () => {
   assert.equal(e.counterparty, 'Swiggy');
   assert.equal(e.account, 'XX9012');
   assert.equal(e.method, 'Credit card');
+});
+
+test('bank alerts are not read as transactions (PhonePe statements are the source)', () => {
+  const events = parseEmail(email({ from: 'HDFC Bank InstaAlerts <alerts@hdfcbank.net>', subject: 'You have done a UPI txn', body: 'Rs.2,500.00 has been debited from account **4321 to VPA rahulk.demo@okaxis on 05-10-26. UPI ref 527812345678.' }));
+  assert.equal(events.filter((e) => e.kind === 'txn').length, 0);
 });
 
 test('OTPs, failed payments and future debits are ignored', () => {

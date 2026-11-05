@@ -13,17 +13,19 @@ A **Home** dashboard brings the four together.
 
 ## Where the data comes from
 
-- **Gmail (read-only).** Recundle reads the following emails and nothing else:
-  - Bank and card alerts (UPI, NEFT, IMPS, card spends, credits).
-  - Merchant receipts.
-  - Subscription emails: renewals, trials, failed payments and cancellations.
+- **PhonePe monthly statements (the only source of expenses).** Recundle finds each *PhonePe – Monthly Statement* email in Gmail and reads the attached PDF. Every row (date, payee, debit or credit, amount, transaction ID, UTR, account) becomes a transaction. The transaction ID keeps a statement from being counted twice.
+  - Password-protected statements are opened with the password you save in **Settings → PhonePe statements**. It is kept only in your browser and sent only while opening the PDFs.
+  - For a month that isn't in Gmail yet, download the statement from the PhonePe app and add the PDF under **Expenses → Add statement**.
+  - Statements arrive after a month ends, so Home and Expenses open on the latest month with statement data until the current month has some.
+- **Gmail emails used for matching (read-only):**
+  - Merchant receipts and subscription emails (renewals, trials, failed payments, cancellations).
   - Loan emails: sanction letters, disbursals, EMI receipts and reminders, statements, foreclosure quotes, closure letters and NOCs.
 
-  Email bodies are read in memory on the server and discarded; only the parsed fields are kept.
-- **Bank statements (CSV)** that you import. They add money received, UPI transfers and anything not emailed. Columns are found by name, and UPI, NEFT and card narrations are read for the payee.
-- **You.** You can edit every field, add transactions, subscriptions and loans, and write your own to-dos.
+  A receipt or lender email for the same amount within 3 days of a statement row is matched to it: it names the merchant, marks subscriptions and links EMIs to loans. An email with no matching row is still used by Subscriptions and Loans, but it is never counted as an expense. **Bank alerts are not read.**
 
-Google Pay, PhonePe and banks don't offer other apps access to your transactions, so Recundle uses the alerts and receipts they email you, plus statements you import.
+  PDFs and email bodies are read in memory on the server and discarded; only the parsed fields are kept.
+- **Bank statements (CSV)** can still be added; rows that also appear in a PhonePe statement are matched, not counted twice.
+- **You.** You can edit every field, add transactions, subscriptions and loans, and write your own to-dos.
 
 ## Where the data lives
 
@@ -61,7 +63,7 @@ On this device. Transactions, your edits, rules, subscriptions, loans and to-dos
   - Unusually large payments.
 - **Transactions:** search (name, UPI ID, reference, notes) and filters (direction, category, type, "to check").
   - Each transaction shows where it came from, with links to the original emails.
-  - The same payment seen twice (bank alert plus receipt, or Gmail plus statement) is counted once.
+  - The same payment seen twice (statement row plus receipt, or PhonePe plus a CSV statement) is counted once.
 - **Edit anything:**
   - Name, payee, type, category, subcategory, purpose, description and notes.
   - Link to a subscription or a loan.
@@ -164,16 +166,19 @@ api/            Vercel functions (Web Request → Response)
   auth.js       Google code → sealed cookie
   logout.js     sign out / revoke
   gmail.js      one page of the Gmail scan (the browser pages through)
+  statement.js  read an uploaded PhonePe statement PDF
 server/
   session.js    AES-GCM cookie sealing
   google.js     token refresh, Google API errors → app errors
-  gmail.js      list + fetch + parse
+  gmail.js      list + fetch + parse; PhonePe statement attachments
+  phonepe.js    PDF text extraction (unpdf), password handling
   ai.js         optional Claude extraction for loan emails
-  parse/        bank alerts, receipts & subscriptions, loans & NOCs, text helpers, lender list
+  parse/        receipts & subscriptions, loans & NOCs, text helpers, lender list
 src/
   core/         pure logic, unit-tested: store & merge, categories & built-in guesses,
                 transactions (rules, duplicates), analytics, subscriptions, loans
-                (amortisation, estimates, NOC matching, strategies), CSV statements
+                (amortisation, estimates, NOC matching, strategies), CSV statements,
+                PhonePe statement layout → rows
   data/         AppData provider: session, on-device storage (IndexedDB), resumable Gmail scan, actions
   components/   UI kit, charts (Recharts), expenses components, app shell
   pages/        Landing, Dashboard, Expenses, Subscriptions, Loans, Todos, Settings
@@ -225,12 +230,13 @@ Dark mode is supported.
 npm install
 cp .env.example .env.local   # add the secret
 npm run dev                  # http://localhost:5173 (API routes served by Vite)
-npm test                     # 30 unit tests
+npm test                     # 36 unit tests
 ```
 
 ## Limitations
 
-- **Gmail only shows what was emailed.** Banks that don't send alerts, cash, and UPI apps that don't email receipts need a statement import or a manual entry.
+- **Expenses are what PhonePe statements show.** Card payments, cash and other UPI apps are not counted unless you add them (manually or as a CSV statement). Receipts for them still feed Subscriptions.
+- **Statement layout.** The reader follows PhonePe's Date | Transaction Details | Type | Amount table. If PhonePe changes the layout, rows may be skipped; Settings shows how many rows each statement gave.
 - **Statements must be CSV.** Excel and PDF statements aren't read; save Excel as CSV first.
 - **Loan figures are what the emails state.** Rate, tenure or balance are often missing; enter them from a statement. Estimates assume fixed rates and monthly EMIs.
 - **NOCs that exist only as PDF attachments are matched by subject and account, not by reading the PDF.** With AI reading on, the email text is read, but attachments still aren't.
